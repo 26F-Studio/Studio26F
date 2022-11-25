@@ -78,16 +78,6 @@ namespace techmino::plugins {
                 helpers::RequestJson request
         );
 
-        [[nodiscard]] Json::Value getPlayerData(
-                const std::string &accessToken,
-                int64_t playerId
-        );
-
-        void updatePlayerData(
-                int64_t playerId,
-                helpers::RequestJson request
-        );
-
         [[nodiscard]] bool ipLimit(const std::string &ip) const;
 
         [[nodiscard]] bool loginLimit(const std::string &type, const std::string &key) const;
@@ -99,8 +89,7 @@ namespace techmino::plugins {
         uint64_t _ipMaxCount{}, _verifyMaxCount{}, _loginMaxCount{};
 
         std::unique_ptr<techmino::structures::PlayerRedis> _playerRedis;
-        drogon::orm::Mapper<drogon_model::techrater::Data> _dataMapper;
-        drogon::orm::Mapper<drogon_model::techrater::Player> _playerMapper;
+        drogon::orm::Mapper<drogon_model::studio26f::Player> _playerMapper;
 
         void _checkEmailCode(const std::string &email, const std::string &code);
     };

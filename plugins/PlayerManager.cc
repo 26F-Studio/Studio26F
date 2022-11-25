@@ -20,9 +20,7 @@ using namespace techmino::structures;
 using namespace techmino::types;
 using namespace techmino::utils;
 
-PlayerManager::PlayerManager() :
-        _dataMapper(app().getDbClient()),
-        _playerMapper(app().getDbClient()) {}
+PlayerManager::PlayerManager() : _playerMapper(app().getDbClient()) {}
 
 void PlayerManager::initAndStart(const Json::Value &config) {
     if (!(
