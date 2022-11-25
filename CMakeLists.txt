@@ -26,8 +26,6 @@ endif ()
 
 add_executable(${PROJECT_NAME} main.cc)
 
-find_library(CPPREDIS_LIB cpp_redis)
-find_library(TACOPIE_LIB tacopie)
 find_package(cryptopp CONFIG REQUIRED)
 find_package(Drogon CONFIG REQUIRED)
 find_package(magic_enum CONFIG REQUIRED)
@@ -36,9 +34,7 @@ target_link_libraries(${PROJECT_NAME}
         PRIVATE
         cryptopp-static
         Drogon::Drogon
-        magic_enum::magic_enum
-        ${CPPREDIS_LIB}
-        ${TACOPIE_LIB})
+        magic_enum::magic_enum)
 
 target_include_directories(${PROJECT_NAME}
         PRIVATE
