@@ -22,7 +22,7 @@ namespace studio26f::helpers {
     protected:
         void del(const std::string &key);
 
-        std::vector<bool> exists(const std::vector<std::string> &keys);
+        bool exists(const std::vector<std::string> &keys);
 
         void expire(const std::string &key, const std::chrono::seconds &ttl);
 

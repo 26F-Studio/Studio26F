@@ -2,8 +2,9 @@
 // Created by ParticleG on 2022/2/9.
 //
 
-#include <structures/Exceptions.h>
 #include <helpers/RedisHelper.h>
+#include <ranges>
+#include <structures/Exceptions.h>
 #include <utils/crypto.h>
 #include <utils/datetime.h>
 
@@ -71,46 +72,46 @@ bool RedisHelper::tokenBucket(
 
 void RedisHelper::del(const string &key) {
     LOG_TRACE << _redisClient->execCommandSync<int64_t>(
-            [](const nosql::RedisResult &r) {
-                return r.asString();
-            },
-            "del %s", key.c_str()
-    );
-
+                [](const nosql::RedisResult &result) {
+                    return result.asInteger();
+                },
+                "del %s", key.c_str()
+        );
 }
 
-vector<bool> RedisHelper::exists(const vector<string> &keys) {
-    vector<string> tempKeys;
-    transform(
-            keys.begin(),
-            keys.end(),
-            back_inserter(tempKeys),
-            [this](const auto &key) {
-                return _baseKey + ":" + key;
-            }
-    );
-    auto future = _redisClient.exists(tempKeys);
-    _redisClient.sync_commit();
-    const auto reply = future.get();
-
-    if (reply.is_null()) {
-        throw redis_exception::KeyNotFound({});
+bool RedisHelper::exists(const vector<string> &keys) {
+    if (keys.empty()) {
+        return false;
     }
-    const auto &array = reply.as_array();
-    vector<bool> result;
-    transform(array.begin(), array.end(), back_inserter(result), [](const auto &item) {
-        return item.as_integer();
-    });
-    return result;
+
+    stringstream keyStream;
+    ranges::copy(keys | views::transform([this](const auto &key) {
+        return _baseKey + ":" + key;
+    }), ostream_iterator<string>(keyStream, " "));
+
+    try {
+        return _redisClient->execCommandSync<bool>(
+                [size = keys.size()](const nosql::RedisResult &result) {
+                    return result.asInteger() == size;
+                },
+                "exists %s", keyStream.str().c_str()
+        );
+    } catch (const nosql::RedisException &err) {
+        LOG_ERROR << err.what();
+    }
 }
 
 void RedisHelper::expire(const string &key, const chrono::seconds &ttl) {
     const auto tempKey = _baseKey + ":" + key;
-    auto future = _redisClient.expire(tempKey, static_cast<int>(ttl.count()));
-    _redisClient.sync_commit();
-    const auto reply = future.get();
-    if (reply.is_null()) {
-        throw redis_exception::KeyNotFound(tempKey);
+    try {
+        LOG_TRACE << _redisClient->execCommandSync<int64_t>(
+                    [](const nosql::RedisResult &result) {
+                        return result.asInteger();
+                    },
+                    "expire %s %d", tempKey.c_str(), ttl.count()
+            );
+    } catch (const nosql::RedisException &err) {
+        LOG_ERROR << err.what();
     }
 }
 
