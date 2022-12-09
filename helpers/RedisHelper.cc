@@ -70,13 +70,13 @@ bool RedisHelper::tokenBucket(
 }
 
 void RedisHelper::del(const string &key) {
-    const auto result = _redisClient->execCommandSync<string>(
+    LOG_TRACE << _redisClient->execCommandSync<int64_t>(
             [](const nosql::RedisResult &r) {
                 return r.asString();
             },
-            "del %s",
-            key.c_str()
+            "del %s", key.c_str()
     );
+
 }
 
 vector<bool> RedisHelper::exists(const vector<string> &keys) {
