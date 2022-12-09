@@ -11,9 +11,9 @@ using namespace drogon;
 using namespace magic_enum;
 using namespace std;
 using namespace trantor;
-using namespace techmino::plugins;
-using namespace techmino::structures;
-using namespace techmino::types;
+using namespace studio26f::plugins;
+using namespace studio26f::structures;
+using namespace studio26f::types;
 
 void EmailManager::messageHandler(
         const TcpConnectionPtr &connPtr,

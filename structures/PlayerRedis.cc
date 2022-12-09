@@ -9,8 +9,8 @@
 using namespace drogon;
 using namespace std;
 using namespace cpp_redis;
-using namespace techmino::structures;
-using namespace techmino::utils;
+using namespace studio26f::structures;
+using namespace studio26f::utils;
 
 // TODO: Make some Redis actions run in pipeline
 

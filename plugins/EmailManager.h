@@ -7,7 +7,7 @@
 #include <drogon/plugins/Plugin.h>
 #include <trantor/net/TcpClient.h>
 
-namespace techmino::plugins {
+namespace studio26f::plugins {
     class EmailManager : public drogon::Plugin<EmailManager> {
     private:
         enum class EmailState {

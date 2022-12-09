@@ -6,7 +6,7 @@
 
 #include <drogon/drogon.h>
 
-namespace techmino::types {
+namespace studio26f::types {
     enum class Permission {
         Banned,
         Restricted,

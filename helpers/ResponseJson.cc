@@ -8,8 +8,8 @@
 using namespace drogon;
 using namespace magic_enum;
 using namespace std;
-using namespace techmino::helpers;
-using namespace techmino::types;
+using namespace studio26f::helpers;
+using namespace studio26f::types;
 
 ResponseJson::ResponseJson(
         HttpStatusCode statusCode,

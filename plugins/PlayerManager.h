@@ -11,7 +11,7 @@
 #include <models/Player.h>
 #include <structures/PlayerRedis.h>
 
-namespace techmino::plugins {
+namespace studio26f::plugins {
     class PlayerManager :
             public drogon::Plugin<PlayerManager>,
             public helpers::I18nHelper<PlayerManager> {
@@ -88,7 +88,7 @@ namespace techmino::plugins {
         std::chrono::seconds _ipInterval{}, _verifyInterval{}, _loginInterval{};
         uint64_t _ipMaxCount{}, _verifyMaxCount{}, _loginMaxCount{};
 
-        std::unique_ptr<techmino::structures::PlayerRedis> _playerRedis;
+        std::unique_ptr<studio26f::structures::PlayerRedis> _playerRedis;
         drogon::orm::Mapper<drogon_model::studio26f::Player> _playerMapper;
 
         void _checkEmailCode(const std::string &email, const std::string &code);

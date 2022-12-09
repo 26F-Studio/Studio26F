@@ -6,7 +6,7 @@
 
 #include <drogon/drogon.h>
 
-namespace techmino::helpers {
+namespace studio26f::helpers {
     template<class T>
     class I18nHelper : trantor::NonCopyable {
     public:

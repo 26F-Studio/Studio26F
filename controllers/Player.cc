@@ -7,11 +7,11 @@
 
 using namespace drogon;
 using namespace std;
-using namespace techmino::api::v1;
-using namespace techmino::helpers;
-using namespace techmino::plugins;
-using namespace techmino::structures;
-using namespace techmino::types;
+using namespace studio26f::api::v1;
+using namespace studio26f::helpers;
+using namespace studio26f::plugins;
+using namespace studio26f::structures;
+using namespace studio26f::types;
 
 Player::Player() : _playerManager(app().getPlugin<PlayerManager>()) {}
 

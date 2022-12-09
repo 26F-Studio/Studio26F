@@ -8,7 +8,7 @@
 #include <plugins/PlayerManager.h>
 #include <structures/ExceptionHandlers.h>
 
-namespace techmino::api::v1 {
+namespace studio26f::api::v1 {
     class Player :
             public drogon::HttpController<Player>,
             public structures::ResponseJsonHandler<Player> {
@@ -23,36 +23,36 @@ namespace techmino::api::v1 {
                     Player::getAvatar,
                     "/avatar",
                     drogon::Get,
-                    "techmino::filters::GetAccessToken",
-                    "techmino::filters::CheckPlayerId"
+                    "studio26f::filters::GetAccessToken",
+                    "studio26f::filters::CheckPlayerId"
             );
             METHOD_ADD(
                     Player::getInfo,
                     "/info",
                     drogon::Get,
-                    "techmino::filters::GetAccessToken",
-                    "techmino::filters::CheckPlayerId"
+                    "studio26f::filters::GetAccessToken",
+                    "studio26f::filters::CheckPlayerId"
             );
             METHOD_ADD(
                     Player::updateInfo,
                     "/info",
                     drogon::Put,
-                    "techmino::filters::CheckAccessToken",
-                    "techmino::filters::PlayerUpdateInfo"
+                    "studio26f::filters::CheckAccessToken",
+                    "studio26f::filters::PlayerUpdateInfo"
             );
             METHOD_ADD(
                     Player::getData,
                     "/data",
                     drogon::Get,
-                    "techmino::filters::GetAccessToken",
-                    "techmino::filters::CheckPlayerId"
+                    "studio26f::filters::GetAccessToken",
+                    "studio26f::filters::CheckPlayerId"
             );
             METHOD_ADD(
                     Player::updateData,
                     "/data",
                     drogon::Put,
-                    "techmino::filters::CheckAccessToken",
-                    "techmino::filters::PlayerUpdateData"
+                    "studio26f::filters::CheckAccessToken",
+                    "studio26f::filters::PlayerUpdateData"
             );
         METHOD_LIST_END
 
@@ -67,6 +67,6 @@ namespace techmino::api::v1 {
         void updateData(const drogon::HttpRequestPtr &req, std::function<void(const drogon::HttpResponsePtr &)> &&callback);
 
     private:
-        techmino::plugins::PlayerManager *_playerManager;
+        studio26f::plugins::PlayerManager *_playerManager;
     };
 }

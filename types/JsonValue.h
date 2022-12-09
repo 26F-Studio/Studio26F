@@ -4,7 +4,7 @@
 
 #pragma once
 
-namespace techmino::types {
+namespace studio26f::types {
     enum class JsonValue {
         Null,
         Object,

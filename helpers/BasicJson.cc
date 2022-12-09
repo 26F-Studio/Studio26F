@@ -5,7 +5,7 @@
 #include <helpers/BasicJson.h>
 
 using namespace std;
-using namespace techmino::helpers;
+using namespace studio26f::helpers;
 
 BasicJson::BasicJson() : _value(Json::objectValue) {}
 

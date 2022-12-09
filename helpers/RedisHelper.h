@@ -6,7 +6,7 @@
 
 #include <drogon/drogon.h>
 
-namespace techmino::helpers {
+namespace studio26f::helpers {
     class RedisHelper : public trantor::NonCopyable {
     public:
         explicit RedisHelper(std::string BaseKey = CMAKE_PROJECT_NAME);

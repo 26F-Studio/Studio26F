@@ -5,7 +5,7 @@
 #include <structures/RedisToken.h>
 
 using namespace std;
-using namespace techmino::structures;
+using namespace studio26f::structures;
 
 RedisToken::RedisToken(
         string refresh,

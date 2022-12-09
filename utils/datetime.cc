@@ -5,7 +5,7 @@
 #include <utils/datetime.h>
 
 using namespace std;
-using namespace techmino::utils;
+using namespace studio26f::utils;
 using namespace trantor;
 
 string datetime::toString(const Date &date) {

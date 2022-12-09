@@ -8,7 +8,7 @@
 #include <sstream>
 #include <trantor/utils/Date.h>
 
-namespace techmino::utils::datetime {
+namespace studio26f::utils::datetime {
     std::string toString(const trantor::Date &date = trantor::Date::date());
 
     std::string toString(const int64_t &microseconds);

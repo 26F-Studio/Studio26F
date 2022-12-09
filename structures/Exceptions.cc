@@ -9,10 +9,10 @@
 using namespace drogon;
 using namespace magic_enum;
 using namespace std;
-using namespace techmino::helpers;
-using namespace techmino::internal;
-using namespace techmino::structures;
-using namespace techmino::types;
+using namespace studio26f::helpers;
+using namespace studio26f::internal;
+using namespace studio26f::structures;
+using namespace studio26f::types;
 
 BaseException::BaseException(string message) : _message(std::move(message)) {}
 

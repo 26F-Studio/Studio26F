@@ -8,7 +8,7 @@
 #include <helpers/RedisHelper.h>
 #include <structures/RedisToken.h>
 
-namespace techmino::structures {
+namespace studio26f::structures {
     class PlayerRedis : public helpers::RedisHelper {
     private:
         struct Expiration {

@@ -11,7 +11,7 @@
 #include <utils/crypto.h>
 #include <sstream>
 
-using namespace techmino::utils;
+using namespace studio26f::utils;
 using namespace CryptoPP;
 using namespace std;
 

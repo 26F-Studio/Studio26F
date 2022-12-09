@@ -6,9 +6,9 @@
 
 using namespace drogon;
 using namespace std;
-using namespace techmino::helpers;
-using namespace techmino::structures;
-using namespace techmino::types;
+using namespace studio26f::helpers;
+using namespace studio26f::structures;
+using namespace studio26f::types;
 
 RequestJson::RequestJson(const RequestJson &json) = default;
 

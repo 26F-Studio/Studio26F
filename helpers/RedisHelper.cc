@@ -9,9 +9,9 @@
 
 using namespace drogon;
 using namespace std;
-using namespace techmino::helpers;
-using namespace techmino::structures;
-using namespace techmino::utils;
+using namespace studio26f::helpers;
+using namespace studio26f::structures;
+using namespace studio26f::utils;
 
 RedisHelper::RedisHelper(std::string BaseKey) :
         _baseKey(std::move(BaseKey)),

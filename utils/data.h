@@ -6,7 +6,7 @@
 
 #include <drogon/drogon.h>
 
-namespace techmino::internal {
+namespace studio26f::internal {
     template<typename T>
     concept JsonTypes =
     std::convertible_to<T, bool> ||
@@ -18,7 +18,7 @@ namespace techmino::internal {
     std::convertible_to<T, Json::String>;
 };
 
-namespace techmino::utils::data {
+namespace studio26f::utils::data {
     std::string randomString(uint64_t length);
 
     uint64_t randomUniform(uint64_t start = 0, uint64_t size = 99999999);

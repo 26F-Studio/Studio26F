@@ -7,7 +7,7 @@
 #include <helpers/BasicJson.h>
 #include <types/ResultCode.h>
 
-namespace techmino::helpers {
+namespace studio26f::helpers {
     class ResponseJson : public BasicJson {
     public:
         typedef std::function<void(const drogon::HttpResponsePtr &)> HttpCallback;

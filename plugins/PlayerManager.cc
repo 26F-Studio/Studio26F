@@ -14,11 +14,11 @@
 using namespace drogon;
 using namespace drogon_model;
 using namespace std;
-using namespace techmino::helpers;
-using namespace techmino::plugins;
-using namespace techmino::structures;
-using namespace techmino::types;
-using namespace techmino::utils;
+using namespace studio26f::helpers;
+using namespace studio26f::plugins;
+using namespace studio26f::structures;
+using namespace studio26f::types;
+using namespace studio26f::utils;
 
 PlayerManager::PlayerManager() : _playerMapper(app().getDbClient()) {}
 

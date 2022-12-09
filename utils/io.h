@@ -6,6 +6,6 @@
 
 #include <string>
 
-namespace techmino::utils::io {
+namespace studio26f::utils::io {
     std::string getFileContent(std::string_view path);
 }

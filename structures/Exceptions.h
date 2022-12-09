@@ -12,7 +12,7 @@
 #include <types/ErrorNumber.h>
 #include <types/ResultCode.h>
 
-namespace techmino::internal {
+namespace studio26f::internal {
     class BaseException : public std::exception {
     public:
         explicit BaseException(std::string message);
@@ -26,7 +26,7 @@ namespace techmino::internal {
     };
 }
 
-namespace techmino::structures {
+namespace studio26f::structures {
     class ResponseException : public internal::BaseException {
     public:
         explicit ResponseException(

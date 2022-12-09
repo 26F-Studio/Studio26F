@@ -6,7 +6,7 @@
 #include <utils/io.h>
 
 using namespace std;
-using namespace techmino::utils;
+using namespace studio26f::utils;
 
 string io::getFileContent(string_view path) {
     constexpr auto readSize = size_t{4096};

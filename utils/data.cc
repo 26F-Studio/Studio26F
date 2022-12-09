@@ -6,7 +6,7 @@
 #include <random>
 
 using namespace std;
-using namespace techmino::utils;
+using namespace studio26f::utils;
 using namespace trantor;
 
 static const char charset[] = "0123456789";

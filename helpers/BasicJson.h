@@ -6,7 +6,7 @@
 
 #include <drogon/drogon.h>
 
-namespace techmino::helpers {
+namespace studio26f::helpers {
     class BasicJson {
     public:
         BasicJson();

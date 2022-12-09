@@ -6,7 +6,7 @@
 
 #include <string>
 
-namespace techmino::utils::crypto {
+namespace studio26f::utils::crypto {
     namespace panama {
         [[maybe_unused]] std::string generateKey();
 

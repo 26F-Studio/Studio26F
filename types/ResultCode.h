@@ -6,7 +6,7 @@
 
 #include <drogon/drogon.h>
 
-namespace techmino::types {
+namespace studio26f::types {
     enum class ResultCode : uint32_t {
         // Message codes (100 ~ 199)
 

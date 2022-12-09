@@ -7,7 +7,7 @@
 #include <string>
 #include <json/value.h>
 
-namespace techmino::structures {
+namespace studio26f::structures {
     class RedisToken {
     public:
         RedisToken(

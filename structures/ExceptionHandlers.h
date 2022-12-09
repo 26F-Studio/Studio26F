@@ -11,7 +11,7 @@
 #include <helpers/ResponseJson.h>
 #include <structures/Exceptions.h>
 
-namespace techmino::structures {
+namespace studio26f::structures {
 
 #define NO_EXCEPTION(expressions) try {expressions} catch (...) {}
 
@@ -24,9 +24,9 @@ namespace techmino::structures {
         ) const {
             using namespace drogon;
             using namespace std;
-            using namespace techmino::helpers;
-            using namespace techmino::structures;
-            using namespace techmino::types;
+            using namespace studio26f::helpers;
+            using namespace studio26f::structures;
+            using namespace studio26f::types;
 
             try {
                 mainFunction();
@@ -60,9 +60,9 @@ namespace techmino::structures {
         ) const {
             using namespace drogon;
             using namespace std;
-            using namespace techmino::helpers;
-            using namespace techmino::structures;
-            using namespace techmino::types;
+            using namespace studio26f::helpers;
+            using namespace studio26f::structures;
+            using namespace studio26f::types;
 
             try {
                 mainFunction();
@@ -94,9 +94,9 @@ namespace techmino::structures {
         ) const {
             using namespace drogon;
             using namespace std;
-            using namespace techmino::helpers;
-            using namespace techmino::structures;
-            using namespace techmino::types;
+            using namespace studio26f::helpers;
+            using namespace studio26f::structures;
+            using namespace studio26f::types;
 
             try {
                 mainFunction();
