@@ -32,7 +32,7 @@ namespace studio26f::helpers {
 
         void setAdd(const std::string &key, const std::vector<std::string> &values);
 
-        void setAdd(const std::vector<std::pair<std::string, std::vector<std::string>>> &params);
+        void setAdd(const std::vector<std::pair<std::string, std::vector<std::string>>> &tempKey);
 
         int64_t setCard(const std::string &key);
 

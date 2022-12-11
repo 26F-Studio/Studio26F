@@ -116,92 +116,154 @@ void RedisHelper::expire(const string &key, const chrono::seconds &ttl) {
 }
 
 void RedisHelper::expire(const vector<tuple<string, chrono::seconds>> &params) {
-    vector<future<reply>> futures;
-    futures.reserve(params.size());
+    const auto transaction = _redisClient->newTransaction();
     for (const auto &[key, ttl]: params) {
-        futures.push_back(_redisClient.expire(_baseKey + ":" + key, static_cast<int>(ttl.count())));
+        transaction->execCommandAsync(
+                [](const nosql::RedisResult &result) {
+                    LOG_TRACE << result.asInteger();
+                },
+                [](const std::exception &err) {
+                    LOG_ERROR << err.what();
+                },
+                "expire %s %d", (_baseKey + ":" + key).c_str(), ttl.count()
+        );
     }
-    _redisClient.sync_commit();
-    for (auto index = 0; index < futures.size(); ++index) {
-        const auto reply = futures[index].get();
-        if (reply.is_null()) {
-            const auto &[key, _] = params[index];
-            throw redis_exception::KeyNotFound(key);
-        }
-    }
+    transaction->execute(
+            [](const nosql::RedisResult &result) {
+                LOG_TRACE << result.asInteger();
+            },
+            [](const std::exception &err) {
+                LOG_ERROR << err.what();
+            }
+    );
 }
 
 string RedisHelper::get(const string &key) {
     const auto tempKey = _baseKey + ":" + key;
-    auto future = _redisClient.get(tempKey);
-    _redisClient.sync_commit();
-    const auto reply = future.get();
-    if (reply.is_null()) {
-        throw redis_exception::KeyNotFound(tempKey);
-    }
-    return reply.as_string();
+    return _redisClient->execCommandSync<string>(
+            [=](const nosql::RedisResult &result) {
+                if (result.isNil()) {
+                    throw redis_exception::KeyNotFound(tempKey);
+                }
+                return result.asString();
+            },
+            "get %s", tempKey.c_str()
+    );
 }
 
 
 void RedisHelper::setAdd(const string &key, const vector<string> &values) {
-    _redisClient.sadd(_baseKey + ":" + key, values);
-    _redisClient.sync_commit();
+    if (values.empty()) {
+        LOG_TRACE << 0;
+        return;
+    }
+
+    stringstream valueStream;
+    ranges::copy(values | views::transform([this](const auto &key) {
+        return _baseKey + ":" + key;
+    }), ostream_iterator<string>(valueStream, " "));
+    _redisClient->execCommandAsync(
+            [](const nosql::RedisResult &result) {
+                LOG_TRACE << result.asInteger();
+            },
+            [](const std::exception &err) {
+                LOG_ERROR << err.what();
+            },
+            "exists %s %s", key.c_str(), valueStream.str().c_str()
+    );
 }
 
 void RedisHelper::setAdd(const vector<pair<string, vector<string>>> &params) {
+    const auto transaction = _redisClient->newTransaction();
     for (const auto &[key, values]: params) {
-        _redisClient.sadd(_baseKey + ":" + key, values);
+        if (values.empty()) {
+            LOG_TRACE << 0;
+            continue;
+        }
+        stringstream valueStream;
+        ranges::copy(values | views::transform([this](const auto &tempKey) {
+            return _baseKey + ":" + tempKey;
+        }), ostream_iterator<string>(valueStream, " "));
+        transaction->execCommandAsync(
+                [](const nosql::RedisResult &result) {
+                    LOG_TRACE << result.asInteger();
+                },
+                [](const std::exception &err) {
+                    LOG_ERROR << err.what();
+                },
+                "exists %s %s", key.c_str(), valueStream.str().c_str()
+        );
     }
-    _redisClient.sync_commit();
+    transaction->execute(
+            [](const nosql::RedisResult &result) {
+                LOG_TRACE << result.asInteger();
+            },
+            [](const std::exception &err) {
+                LOG_ERROR << err.what();
+            }
+    );
 }
 
 int64_t RedisHelper::setCard(const string &key) {
     const auto tempKey = _baseKey + ":" + key;
-    auto future = _redisClient.scard(tempKey);
-    _redisClient.sync_commit();
-    const auto reply = future.get();
-    if (reply.is_null()) {
-        throw redis_exception::KeyNotFound(tempKey);
-    }
-    return reply.as_integer();
+    return _redisClient->execCommandSync<int64_t>(
+            [=](const nosql::RedisResult &result) {
+                return result.asInteger();
+            },
+            "get %s", tempKey.c_str()
+    );
 }
 
 vector<string> RedisHelper::setGetMembers(const string &key) {
     const auto tempKey = _baseKey + ":" + key;
-    auto future = _redisClient.smembers(tempKey);
-    _redisClient.sync_commit();
-    const auto reply = future.get();
-    if (reply.is_null()) {
-        throw redis_exception::KeyNotFound(tempKey);
-    }
-    const auto &array = reply.as_array();
-    vector<string> members;
-    transform(array.begin(), array.end(), back_inserter(members), [](const auto &item) {
-        return item.as_string();
-    });
-    return members;
+    return _redisClient->execCommandSync<vector<string>>(
+            [=](const nosql::RedisResult &result) -> vector<string> {
+                if (result.isNil()) {
+                    return {};
+                }
+                const auto array = result.asArray();
+                const auto memberView = array | views::transform([](const nosql::RedisResult &result) {
+                    return result.asString();
+                }) | views::common;
+                return {memberView.begin(), memberView.end()};
+
+            },
+            "sMembers %s", tempKey.c_str()
+    );
 }
 
 vector<vector<string>> RedisHelper::setGetMembers(const vector<string> &keys) {
-    vector<future<reply>> futures;
-    futures.reserve(keys.size());
-    for (const auto &key: keys) {
-        futures.push_back(_redisClient.smembers(_baseKey + ":" + key));
-    }
-    _redisClient.sync_commit();
     vector<vector<string>> result;
-    for (auto index = 0; index < futures.size(); ++index) {
-        const auto reply = futures[index].get();
-        if (reply.is_null()) {
-            throw redis_exception::KeyNotFound(keys[index]);
-        }
-        const auto &array = reply.as_array();
-        vector<string> members;
-        transform(array.begin(), array.end(), back_inserter(members), [](const auto &item) {
-            return item.as_string();
-        });
-        result.push_back(members);
+    const auto transaction = _redisClient->newTransaction();
+    for (const auto &key: keys) {
+        const auto tempKey = _baseKey + ":" + key;
+        result.push_back(transaction->execCommandSync<vector<string>>(
+                [=](const nosql::RedisResult &result) -> vector<string> {
+                    if (result.isNil()) {
+                        return {};
+                    }
+                    const auto array = result.asArray();
+                    const auto memberView = array | views::transform([](const nosql::RedisResult &result) {
+                        return result.asString();
+                    }) | views::common;
+                    return {memberView.begin(), memberView.end()};
+
+                },
+                "sMembers %s", tempKey.c_str()
+        ));
     }
+    promise<int64_t> p1;
+    auto f1 = p1.get_future();
+    transaction->execute(
+            [&](const nosql::RedisResult &result) {
+                p1.set_value(result.asInteger());
+            },
+            [&](const std::exception &err) {
+                p1.set_value(-1);
+                LOG_ERROR << err.what();
+            }
+    );
+    LOG_TRACE << f1.get();
     return result;
 }
 
