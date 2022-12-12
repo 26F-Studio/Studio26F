@@ -51,6 +51,7 @@ namespace studio26f::plugins {
 
             ~Email() = default;
         };
+
     public:
         void initAndStart(const Json::Value &config) override;
 
@@ -62,6 +63,13 @@ namespace studio26f::plugins {
                 const std::string &content,
                 bool isHTML,
                 const std::function<void(bool, const std::string &)> &callback
+        ) noexcept;
+
+        std::pair<bool, std::string> smtp(
+                const std::string &receiverEmail,
+                const std::string &subject,
+                const std::string &content,
+                bool isHTML
         );
 
     private:

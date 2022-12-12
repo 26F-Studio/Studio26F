@@ -40,20 +40,6 @@ namespace studio26f::api::v1 {
                     "studio26f::filters::CheckAccessToken",
                     "studio26f::filters::PlayerUpdateInfo"
             );
-            METHOD_ADD(
-                    Player::getData,
-                    "/data",
-                    drogon::Get,
-                    "studio26f::filters::GetAccessToken",
-                    "studio26f::filters::CheckPlayerId"
-            );
-            METHOD_ADD(
-                    Player::updateData,
-                    "/data",
-                    drogon::Put,
-                    "studio26f::filters::CheckAccessToken",
-                    "studio26f::filters::PlayerUpdateData"
-            );
         METHOD_LIST_END
 
         void getAvatar(const drogon::HttpRequestPtr &req, std::function<void(const drogon::HttpResponsePtr &)> &&callback);
@@ -61,10 +47,6 @@ namespace studio26f::api::v1 {
         void getInfo(const drogon::HttpRequestPtr &req, std::function<void(const drogon::HttpResponsePtr &)> &&callback);
 
         void updateInfo(const drogon::HttpRequestPtr &req, std::function<void(const drogon::HttpResponsePtr &)> &&callback);
-
-        void getData(const drogon::HttpRequestPtr &req, std::function<void(const drogon::HttpResponsePtr &)> &&callback);
-
-        void updateData(const drogon::HttpRequestPtr &req, std::function<void(const drogon::HttpResponsePtr &)> &&callback);
 
     private:
         studio26f::plugins::PlayerManager *_playerManager;

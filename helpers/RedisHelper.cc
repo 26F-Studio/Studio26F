@@ -14,7 +14,7 @@ using namespace studio26f::helpers;
 using namespace studio26f::structures;
 using namespace studio26f::utils;
 
-RedisHelper::RedisHelper(std::string BaseKey) :
+RedisHelper::RedisHelper(string BaseKey) :
         _baseKey(std::move(BaseKey)),
         _redisClient(app().getRedisClient()) {}
 
@@ -27,18 +27,19 @@ bool RedisHelper::tokenBucket(
         const string &key,
         const chrono::microseconds &restoreInterval,
         const uint64_t &maxCount
-) {
+) const {
     const auto countKey = _baseKey + ":tokenBucket:count:" + key;
     const auto updatedKey = _baseKey + ":tokenBucket:updated:" + key;
     const auto maxTtl = chrono::duration_cast<chrono::seconds>(restoreInterval * maxCount);
 
     uint64_t countValue;
-    try {
-        countValue = stoull(get(countKey));
-    } catch (...) {
-        _redisClient.set(countKey, to_string(maxCount - 1));
-        countValue = maxCount;
-    }
+    if (exists({countKey}))
+        try {
+            countValue = stoull(get(countKey));
+        } catch (...) {
+            set(countKey, to_string(maxCount - 1));
+            countValue = maxCount;
+        }
 
     bool hasToken = true;
     try {
@@ -50,18 +51,18 @@ bool RedisHelper::tokenBucket(
                 ) / restoreInterval.count() - 1;
 
         if (generatedCount >= 1) {
-            _redisClient.set(updatedKey, datetime::toString(nowMicroseconds));
-            _redisClient.incrby(countKey, static_cast<int>(generatedCount) - 1);
+            set(updatedKey, datetime::toString(nowMicroseconds));
+            incrBy(countKey, static_cast<int>(generatedCount) - 1);
             hasToken = true;
         } else if (countValue > 0) {
-            _redisClient.decr(countKey);
+            decrBy(countKey);
             hasToken = true;
         } else {
             hasToken = false;
         }
     } catch (...) {
-        _redisClient.set(updatedKey, datetime::toString());
-        _redisClient.set(countKey, to_string(maxCount - 1));
+        set({{updatedKey, datetime::toString()},
+             {countKey,   to_string(maxCount - 1)}});
     }
 
     // Use sync methods to make sure the operation is completed.
@@ -70,16 +71,71 @@ bool RedisHelper::tokenBucket(
     return hasToken;
 }
 
-void RedisHelper::del(const string &key) {
-    LOG_TRACE << _redisClient->execCommandSync<int64_t>(
-                [](const nosql::RedisResult &result) {
-                    return result.asInteger();
-                },
-                "del %s", key.c_str()
-        );
+void RedisHelper::del(const vector<string> &keys, const function<void(int64_t)> &callback) const noexcept {
+    if (keys.empty()) {
+        callback(0);
+        return;
+    }
+
+    stringstream keyStream;
+    ranges::copy(keys | views::transform([this](const auto &key) {
+        return _baseKey + ":" + key;
+    }), ostream_iterator<string>(keyStream, " "));
+
+    _redisClient->execCommandAsync(
+            [&, size = keys.size()](const nosql::RedisResult &result) {
+                callback(result.asInteger());
+            },
+            [&](const exception &err) {
+                LOG_ERROR << err.what();
+                callback(-1);
+            },
+            "del %s", keyStream.str().c_str()
+    );
 }
 
-bool RedisHelper::exists(const vector<string> &keys) {
+int64_t RedisHelper::del(const vector<string> &keys) const {
+    if (keys.empty()) {
+        return 0;
+    }
+
+    stringstream keyStream;
+    ranges::copy(keys | views::transform([this](const auto &key) {
+        return _baseKey + ":" + key;
+    }), ostream_iterator<string>(keyStream, " "));
+
+    return _redisClient->execCommandSync<int64_t>(
+            [size = keys.size()](const nosql::RedisResult &result) {
+                return result.asInteger();
+            },
+            "del %s", keyStream.str().c_str()
+    );
+}
+
+void RedisHelper::exists(const vector<string> &keys, const function<void(bool)> &callback) const noexcept {
+    if (keys.empty()) {
+        callback(false);
+        return;
+    }
+
+    stringstream keyStream;
+    ranges::copy(keys | views::transform([this](const auto &key) {
+        return _baseKey + ":" + key;
+    }), ostream_iterator<string>(keyStream, " "));
+
+    _redisClient->execCommandAsync(
+            [&, size = keys.size()](const nosql::RedisResult &result) {
+                callback(result.asInteger() == size);
+            },
+            [&](const exception &err) {
+                LOG_ERROR << err.what();
+                callback(false);
+            },
+            "exists %s", keyStream.str().c_str()
+    );
+}
+
+bool RedisHelper::exists(const vector<string> &keys) const {
     if (keys.empty()) {
         return false;
     }
@@ -89,56 +145,125 @@ bool RedisHelper::exists(const vector<string> &keys) {
         return _baseKey + ":" + key;
     }), ostream_iterator<string>(keyStream, " "));
 
-    try {
-        return _redisClient->execCommandSync<bool>(
-                [size = keys.size()](const nosql::RedisResult &result) {
-                    return result.asInteger() == size;
-                },
-                "exists %s", keyStream.str().c_str()
-        );
-    } catch (const nosql::RedisException &err) {
-        LOG_ERROR << err.what();
-    }
+    return _redisClient->execCommandSync<bool>(
+            [size = keys.size()](const nosql::RedisResult &result) {
+                return result.asInteger() == size;
+            },
+            "exists %s", keyStream.str().c_str()
+    );
 }
 
-void RedisHelper::expire(const string &key, const chrono::seconds &ttl) {
+void RedisHelper::expire(
+        const string &key,
+        const chrono::seconds &ttl,
+        const function<void(bool)> &callback
+) const noexcept {
     const auto tempKey = _baseKey + ":" + key;
-    try {
-        LOG_TRACE << _redisClient->execCommandSync<int64_t>(
-                    [](const nosql::RedisResult &result) {
-                        return result.asInteger();
-                    },
-                    "expire %s %d", tempKey.c_str(), ttl.count()
-            );
-    } catch (const nosql::RedisException &err) {
-        LOG_ERROR << err.what();
-    }
+    _redisClient->execCommandAsync(
+            [&](const nosql::RedisResult &result) {
+                callback(result.asInteger());
+            },
+            [&](const exception &err) {
+                LOG_ERROR << err.what();
+                callback(false);
+            },
+            "expire %s %d", tempKey.c_str(), ttl.count()
+    );
 }
 
-void RedisHelper::expire(const vector<tuple<string, chrono::seconds>> &params) {
+bool RedisHelper::expire(const string &key, const chrono::seconds &ttl) const {
+    const auto tempKey = _baseKey + ":" + key;
+    return _redisClient->execCommandSync<bool>(
+            [](const nosql::RedisResult &result) {
+                return result.asInteger();
+            },
+            "expire %s %d", tempKey.c_str(), ttl.count()
+    );
+}
+
+void RedisHelper::expire(
+        const KeyPairs <chrono::seconds> &params,
+        const function<void(vector<bool> &&)> &callback
+) const noexcept {
     const auto transaction = _redisClient->newTransaction();
     for (const auto &[key, ttl]: params) {
         transaction->execCommandAsync(
                 [](const nosql::RedisResult &result) {
-                    LOG_TRACE << result.asInteger();
+                    LOG_TRACE << result.getStringForDisplayingWithIndent();
                 },
-                [](const std::exception &err) {
+                [](const exception &err) {
                     LOG_ERROR << err.what();
                 },
                 "expire %s %d", (_baseKey + ":" + key).c_str(), ttl.count()
         );
     }
     transaction->execute(
-            [](const nosql::RedisResult &result) {
-                LOG_TRACE << result.asInteger();
+            [&](const nosql::RedisResult &result) {
+                LOG_TRACE << result.getStringForDisplayingWithIndent();
+                const auto &resultsArray = result.asArray();
+                const auto view = resultsArray | views::transform(
+                        [](const auto &item) -> bool { return item.asInteger(); }
+                );
+                callback({view.begin(), view.end()});
             },
-            [](const std::exception &err) {
+            [&](const exception &err) {
                 LOG_ERROR << err.what();
+                callback({});
             }
     );
 }
 
-string RedisHelper::get(const string &key) {
+vector<bool> RedisHelper::expire(const KeyPairs <chrono::seconds> &params) const {
+    const auto transaction = _redisClient->newTransaction();
+    for (const auto &[key, ttl]: params) {
+        transaction->execCommandAsync(
+                [](const nosql::RedisResult &result) {
+                    LOG_TRACE << result.getStringForDisplayingWithIndent();
+                },
+                [](const exception &err) {
+                    LOG_ERROR << err.what();
+                },
+                "expire %s %d", (_baseKey + ":" + key).c_str(), ttl.count()
+        );
+    }
+    promise<vector<bool>> resultsPromise;
+    auto resultsFuture = resultsPromise.get_future();
+    transaction->execute(
+            [&](const nosql::RedisResult &result) {
+                LOG_TRACE << result.getStringForDisplayingWithIndent();
+                const auto &resultsArray = result.asArray();
+                const auto view = resultsArray | views::transform(
+                        [](const auto &item) -> bool { return item.asInteger(); }
+                );
+                resultsPromise.set_value({view.begin(), view.end()});
+            },
+            [&](const exception &err) {
+                LOG_ERROR << err.what();
+                resultsPromise.set_value({});
+            }
+    );
+    return resultsFuture.get();
+}
+
+void RedisHelper::get(const string &key, const RedisHelper::SimpleResultCb &callback) const noexcept {
+    const auto tempKey = _baseKey + ":" + key;
+    _redisClient->execCommandAsync(
+            [&](const nosql::RedisResult &result) {
+                if (result.isNil()) {
+                    callback({false, {}});
+                } else {
+                    callback({true, result.asString()});
+                }
+            },
+            [&](const exception &err) {
+                LOG_ERROR << err.what();
+                callback({false, err.what()});
+            },
+            "get %s", tempKey.c_str()
+    );
+}
+
+string RedisHelper::get(const string &key) const {
     const auto tempKey = _baseKey + ":" + key;
     return _redisClient->execCommandSync<string>(
             [=](const nosql::RedisResult &result) {
@@ -151,162 +276,162 @@ string RedisHelper::get(const string &key) {
     );
 }
 
-
-void RedisHelper::setAdd(const string &key, const vector<string> &values) {
-    if (values.empty()) {
-        LOG_TRACE << 0;
-        return;
-    }
-
-    stringstream valueStream;
-    ranges::copy(values | views::transform([this](const auto &key) {
-        return _baseKey + ":" + key;
-    }), ostream_iterator<string>(valueStream, " "));
-    _redisClient->execCommandAsync(
+int64_t RedisHelper::incrBy(const string &key, const int64_t &value) const {
+    const auto tempKey = _baseKey + ":" + key;
+    return _redisClient->execCommandSync<int64_t>(
             [](const nosql::RedisResult &result) {
-                LOG_TRACE << result.asInteger();
+                return result.asInteger();
             },
-            [](const std::exception &err) {
-                LOG_ERROR << err.what();
-            },
-            "exists %s %s", key.c_str(), valueStream.str().c_str()
+            "incrBy %s %lld", tempKey.c_str(), value
     );
 }
 
-void RedisHelper::setAdd(const vector<pair<string, vector<string>>> &params) {
+int64_t RedisHelper::decrBy(const string &key, const int64_t &value) const {
+    const auto tempKey = _baseKey + ":" + key;
+    return _redisClient->execCommandSync<int64_t>(
+            [](const nosql::RedisResult &result) {
+                return result.asInteger();
+            },
+            "decrBy %s %lld", tempKey.c_str(), value
+    );
+}
+
+void RedisHelper::set(const string &key, const string &value, const SimpleResultCb &callback) const noexcept {
+    const auto tempKey = _baseKey + ":" + key;
+    _redisClient->execCommandAsync(
+            [&](const nosql::RedisResult &result) {
+                const auto resultString = result.asString();
+                LOG_TRACE << result.getStringForDisplayingWithIndent();
+                callback({true, result.asString()});
+            },
+            [&](const exception &err) {
+                LOG_ERROR << err.what();
+                callback({false, err.what()});
+            },
+            "set %s %s", tempKey.c_str(), value.c_str()
+    );
+}
+
+RedisHelper::SimpleResult RedisHelper::set(const string &key, const string &value) const noexcept(false) {
+    const auto tempKey = _baseKey + ":" + key;
+    return _redisClient->execCommandSync<SimpleResult>(
+            [&](const nosql::RedisResult &result) -> SimpleResult {
+                const auto resultString = result.asString();
+                LOG_TRACE << result.getStringForDisplayingWithIndent();
+                return {true, result.asString()};
+            },
+            "set %s %s", tempKey.c_str(), value.c_str()
+    );
+}
+
+void RedisHelper::set(const KeyPairs <string> &params, const SimpleResultsCb &callback) const noexcept {
     const auto transaction = _redisClient->newTransaction();
-    for (const auto &[key, values]: params) {
-        if (values.empty()) {
-            LOG_TRACE << 0;
-            continue;
-        }
-        stringstream valueStream;
-        ranges::copy(values | views::transform([this](const auto &tempKey) {
-            return _baseKey + ":" + tempKey;
-        }), ostream_iterator<string>(valueStream, " "));
+    for (const auto &[key, value]: params) {
+        const auto tempKey = _baseKey + ":" + key;
         transaction->execCommandAsync(
-                [](const nosql::RedisResult &result) {
-                    LOG_TRACE << result.asInteger();
+                [&](const nosql::RedisResult &result) {
+                    LOG_TRACE << result.getStringForDisplayingWithIndent();
                 },
-                [](const std::exception &err) {
+                [&](const exception &err) {
                     LOG_ERROR << err.what();
                 },
-                "exists %s %s", key.c_str(), valueStream.str().c_str()
+                "set %s %s", tempKey.c_str(), value.c_str()
         );
     }
     transaction->execute(
-            [](const nosql::RedisResult &result) {
-                LOG_TRACE << result.asInteger();
+            [&](const nosql::RedisResult &result) {
+                LOG_TRACE << result.getStringForDisplayingWithIndent();
+                const auto &resultsArray = result.asArray();
+                const auto view = resultsArray | views::transform(
+                        [&result](const auto &item) -> SimpleResult {
+                            return {true, result.asString()};
+                        }
+                );
+                callback({view.begin(), view.end()});
             },
-            [](const std::exception &err) {
+            [&](const exception &err) {
                 LOG_ERROR << err.what();
+                callback({{false, err.what()}});
             }
     );
 }
 
-int64_t RedisHelper::setCard(const string &key) {
-    const auto tempKey = _baseKey + ":" + key;
-    return _redisClient->execCommandSync<int64_t>(
-            [=](const nosql::RedisResult &result) {
-                return result.asInteger();
-            },
-            "get %s", tempKey.c_str()
-    );
-}
-
-vector<string> RedisHelper::setGetMembers(const string &key) {
-    const auto tempKey = _baseKey + ":" + key;
-    return _redisClient->execCommandSync<vector<string>>(
-            [=](const nosql::RedisResult &result) -> vector<string> {
-                if (result.isNil()) {
-                    return {};
-                }
-                const auto array = result.asArray();
-                const auto memberView = array | views::transform([](const nosql::RedisResult &result) {
-                    return result.asString();
-                }) | views::common;
-                return {memberView.begin(), memberView.end()};
-
-            },
-            "sMembers %s", tempKey.c_str()
-    );
-}
-
-vector<vector<string>> RedisHelper::setGetMembers(const vector<string> &keys) {
-    vector<vector<string>> result;
+RedisHelper::SimpleResults RedisHelper::set(const KeyPairs <string> &params) const noexcept(false) {
     const auto transaction = _redisClient->newTransaction();
-    for (const auto &key: keys) {
+    for (const auto &[key, value]: params) {
         const auto tempKey = _baseKey + ":" + key;
-        result.push_back(transaction->execCommandSync<vector<string>>(
-                [=](const nosql::RedisResult &result) -> vector<string> {
-                    if (result.isNil()) {
-                        return {};
-                    }
-                    const auto array = result.asArray();
-                    const auto memberView = array | views::transform([](const nosql::RedisResult &result) {
-                        return result.asString();
-                    }) | views::common;
-                    return {memberView.begin(), memberView.end()};
-
+        transaction->execCommandAsync(
+                [&](const nosql::RedisResult &result) {
+                    LOG_TRACE << result.getStringForDisplayingWithIndent();
                 },
-                "sMembers %s", tempKey.c_str()
-        ));
+                [&](const exception &err) {
+                    LOG_ERROR << err.what();
+                },
+                "set %s %s", tempKey.c_str(), value.c_str()
+        );
     }
-    promise<int64_t> p1;
-    auto f1 = p1.get_future();
+    promise<SimpleResults> resultsPromise;
+    auto resultsFuture = resultsPromise.get_future();
     transaction->execute(
             [&](const nosql::RedisResult &result) {
-                p1.set_value(result.asInteger());
+                LOG_TRACE << result.getStringForDisplayingWithIndent();
+                const auto &resultsArray = result.asArray();
+                const auto view = resultsArray | views::transform(
+                        [&result](const auto &item) -> SimpleResult {
+                            return {true, result.asString()};
+                        }
+                );
+                resultsPromise.set_value({view.begin(), view.end()});
             },
-            [&](const std::exception &err) {
-                p1.set_value(-1);
+            [&](const exception &err) {
                 LOG_ERROR << err.what();
+                resultsPromise.set_value({{false, err.what()}});
             }
     );
-    LOG_TRACE << f1.get();
-    return result;
+    return resultsFuture.get();
 }
 
-bool RedisHelper::setIsMember(const string &key, const string &value) {
+string RedisHelper::setEx(const string &key, int64_t ttl, const string &value) const {
     const auto tempKey = _baseKey + ":" + key;
-    auto future = _redisClient.sismember(tempKey, value);
-    _redisClient.sync_commit();
-    const auto reply = future.get();
-    if (reply.is_null()) {
-        throw redis_exception::KeyNotFound(tempKey);
-    }
-    return reply.as_integer();
+    return _redisClient->execCommandSync<string>(
+            [](const nosql::RedisResult &result) {
+                return result.asString();
+            },
+            "setEx %s %lld %s", tempKey.c_str(), ttl, value.c_str()
+    );
 }
 
-void RedisHelper::setRemove(const string &key, const vector<string> &values) {
-    _redisClient.srem(_baseKey + ":" + key, values);
-    _redisClient.sync_commit();
-}
-
-void RedisHelper::setRemove(const vector<pair<string, vector<string>>> &params) {
-    for (const auto &[key, values]: params) {
-        _redisClient.srem(_baseKey + ":" + key, values);
-    }
-    _redisClient.sync_commit();
-}
-
-void RedisHelper::set(const string &key, const string &value) {
-    _redisClient.set(_baseKey + ":" + key, value);
-    _redisClient.sync_commit();
-}
-
-void RedisHelper::setEx(
-        const string &key,
-        int ttl,
-        const string &value
-) {
-    _redisClient.setex(_baseKey + ":" + key, ttl, value);
-    _redisClient.sync_commit();
-}
-
-void RedisHelper::setEx(const vector<tuple<string, int, string>> &params) {
+RedisHelper::SimpleResults RedisHelper::setEx(const vector<tuple<string, int64_t, string>> &params) const {
+    const auto transaction = _redisClient->newTransaction();
     for (const auto &[key, ttl, value]: params) {
-        _redisClient.setex(_baseKey + ":" + key, ttl, value);
+        const auto tempKey = _baseKey + ":" + key;
+        transaction->execCommandAsync(
+                [&](const nosql::RedisResult &result) {
+                    LOG_TRACE << result.getStringForDisplayingWithIndent();
+                },
+                [&](const exception &err) {
+                    LOG_ERROR << err.what();
+                },
+                "setEx %s %lld %s", tempKey.c_str(), ttl, value.c_str()
+        );
     }
-    _redisClient.sync_commit();
+    promise<SimpleResults> resultsPromise;
+    auto resultsFuture = resultsPromise.get_future();
+    transaction->execute(
+            [&](const nosql::RedisResult &result) {
+                LOG_TRACE << result.getStringForDisplayingWithIndent();
+                const auto &resultsArray = result.asArray();
+                const auto view = resultsArray | views::transform(
+                        [&result](const auto &item) -> SimpleResult {
+                            return {true, result.asString()};
+                        }
+                );
+                resultsPromise.set_value({view.begin(), view.end()});
+            },
+            [&](const exception &err) {
+                LOG_ERROR << err.what();
+                resultsPromise.set_value({{false, err.what()}});
+            }
+    );
+    return resultsFuture.get();
 }

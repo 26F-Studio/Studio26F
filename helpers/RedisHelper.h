@@ -7,7 +7,7 @@
 #include <drogon/drogon.h>
 
 namespace studio26f::helpers {
-    class RedisHelper : public trantor::NonCopyable {
+    class RedisHelper {
     public:
         explicit RedisHelper(std::string BaseKey = CMAKE_PROJECT_NAME);
 
@@ -15,46 +15,67 @@ namespace studio26f::helpers {
                 const std::string &key,
                 const std::chrono::microseconds &restoreInterval,
                 const uint64_t &maxCount
-        );
+        ) const;
 
         virtual ~RedisHelper();
 
     protected:
-        void del(const std::string &key);
+        template<typename T>
+        using KeyPair = std::pair<std::string, T>;
 
-        bool exists(const std::vector<std::string> &keys);
+        template<typename T>
+        using KeyPairs = std::vector<KeyPair<T>>;
 
-        void expire(const std::string &key, const std::chrono::seconds &ttl);
+        using SimpleResult = std::pair<bool, std::string>;
+        using SimpleResultCb = std::function<void(SimpleResult &&)>;
 
-        void expire(const std::vector<std::tuple<std::string, std::chrono::seconds>> &params);
+        using SimpleResults = std::vector<SimpleResult>;
+        using SimpleResultsCb = std::function<void(SimpleResults &&)>;
 
-        std::string get(const std::string &key);
+        void del(const std::vector<std::string> &keys, const std::function<void(int64_t)> &callback) const noexcept;
 
-        void setAdd(const std::string &key, const std::vector<std::string> &values);
+        [[nodiscard]] int64_t del(const std::vector<std::string> &keys) const;
 
-        void setAdd(const std::vector<std::pair<std::string, std::vector<std::string>>> &tempKey);
+        void exists(const std::vector<std::string> &keys, const std::function<void(bool)> &callback) const noexcept;
 
-        int64_t setCard(const std::string &key);
+        [[nodiscard]] bool exists(const std::vector<std::string> &keys) const;
 
-        std::vector<std::string> setGetMembers(const std::string &key);
-
-        std::vector<std::vector<std::string>> setGetMembers(const std::vector<std::string> &keys);
-
-        bool setIsMember(const std::string &key, const std::string &value);
-
-        void setRemove(const std::string &key, const std::vector<std::string> &values);
-
-        void setRemove(const std::vector<std::pair<std::string, std::vector<std::string>>> &params);
-
-        void set(const std::string &key, const std::string &value);
-
-        void setEx(
+        void expire(
                 const std::string &key,
-                int ttl,
-                const std::string &value
-        );
+                const std::chrono::seconds &ttl,
+                const std::function<void(bool)> &callback
+        ) const noexcept;
 
-        void setEx(const std::vector<std::tuple<std::string, int, std::string>> &params);
+        [[nodiscard]] bool expire(const std::string &key, const std::chrono::seconds &ttl) const;
+
+        void expire(
+                const KeyPairs<std::chrono::seconds> &params,
+                const std::function<void(std::vector<bool> &&)> &callback
+        ) const noexcept;
+
+        [[nodiscard]] std::vector<bool> expire(const KeyPairs<std::chrono::seconds> &params) const;
+
+        void get(const std::string &key, const SimpleResultCb &callback) const noexcept;
+
+        [[nodiscard]] std::string get(const std::string &key) const;
+
+        [[nodiscard]] int64_t incrBy(const std::string &key, const int64_t &value = 1) const;
+
+        [[nodiscard]] int64_t decrBy(const std::string &key, const int64_t &value = 1) const;
+
+        void set(const std::string &key, const std::string &value, const SimpleResultCb &callback) const noexcept;
+
+        [[nodiscard]] SimpleResult set(const std::string &key, const std::string &value) const;
+
+        void set(const KeyPairs<std::string> &params, const SimpleResultsCb &callback) const noexcept;
+
+        [[nodiscard]] SimpleResults set(const KeyPairs<std::string> &params) const;
+
+        [[nodiscard]] std::string setEx(const std::string &key, int64_t ttl, const std::string &value) const;
+
+        [[nodiscard]] SimpleResults setEx(
+                const std::vector<std::tuple<std::string, int64_t, std::string>> &params
+        ) const;
 
     private:
         std::string _baseKey;

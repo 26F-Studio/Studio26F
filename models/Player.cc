@@ -24,12 +24,12 @@ const std::string Player::Cols::_permission = "permission";
 const std::string Player::Cols::_password_hash = "password_hash";
 const std::string Player::Cols::_email = "email";
 const std::string Player::Cols::_phone = "phone";
-const std::string Player::primaryKeyName = "";
-const bool Player::hasPrimaryKey = false;
+const std::string Player::primaryKeyName = "id";
+const bool Player::hasPrimaryKey = true;
 const std::string Player::tableName = "player";
 
 const std::vector<typename Player::MetaData> Player::metaData_={
-{"id","int64_t","bigint",8,1,0,1},
+{"id","int64_t","bigint",8,1,1,1},
 {"username","std::string","text",0,0,0,0},
 {"motto","std::string","text",0,0,0,0},
 {"region","int32_t","integer",4,0,0,0},
@@ -555,6 +555,11 @@ void Player::setId(const int64_t &pId) noexcept
 {
     id_ = std::make_shared<int64_t>(pId);
     dirtyFlag_[0] = true;
+}
+const typename Player::PrimaryKeyType & Player::getPrimaryKey() const
+{
+    assert(id_);
+    return *id_;
 }
 
 const std::string &Player::getValueOfUsername() const noexcept
@@ -1598,6 +1603,11 @@ bool Player::validateJsonForUpdate(const Json::Value &pJson, std::string &err)
         if(!validJsonOfField(0, "id", pJson["id"], err, false))
             return false;
     }
+    else
+    {
+        err = "The value of primary key must be set in the json object for update";
+        return false;
+    }
     if(pJson.isMember("username"))
     {
         if(!validJsonOfField(1, "username", pJson["username"], err, false))
@@ -1665,6 +1675,11 @@ bool Player::validateMasqueradedJsonForUpdate(const Json::Value &pJson,
           if(!validJsonOfField(0, pMasqueradingVector[0], pJson[pMasqueradingVector[0]], err, false))
               return false;
       }
+    else
+    {
+        err = "The value of primary key must be set in the json object for update";
+        return false;
+    }
       if(!pMasqueradingVector[1].empty() && pJson.isMember(pMasqueradingVector[1]))
       {
           if(!validJsonOfField(1, pMasqueradingVector[1], pJson[pMasqueradingVector[1]], err, false))
@@ -1740,11 +1755,6 @@ bool Player::validJsonOfField(size_t index,
             if(isForCreation)
             {
                 err="The automatic primary key cannot be set";
-                return false;
-            }
-            else
-            {
-                err="The automatic primary key cannot be update";
                 return false;
             }
             if(!pJson.isInt64())

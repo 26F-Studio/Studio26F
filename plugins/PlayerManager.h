@@ -6,17 +6,32 @@
 
 #include <drogon/plugins/Plugin.h>
 #include <helpers/I18nHelper.h>
+#include <helpers/RedisHelper.h>
 #include <helpers/RequestJson.h>
 #include <helpers/ResponseJson.h>
 #include <models/Player.h>
-#include <structures/PlayerRedis.h>
 
 namespace studio26f::plugins {
     class PlayerManager :
             public drogon::Plugin<PlayerManager>,
-            public helpers::I18nHelper<PlayerManager> {
+            public helpers::I18nHelper<PlayerManager>,
+            public helpers::RedisHelper {
     public:
         static constexpr char projectName[] = CMAKE_PROJECT_NAME;
+
+        class RedisToken {
+        public:
+            RedisToken(std::string access, std::string refresh);
+
+            RedisToken(RedisToken &&redisToken) noexcept;
+
+            [[nodiscard]] std::string &access();
+
+            [[nodiscard]] Json::Value parse() const;
+
+        private:
+            std::string _accessToken, _refreshToken;
+        };
 
     public:
         PlayerManager();
@@ -25,23 +40,20 @@ namespace studio26f::plugins {
 
         void shutdown() override;
 
-        [[nodiscard]] int64_t getPlayerId(const std::string &accessToken);
+        [[nodiscard]] int64_t getPlayerId(const std::string &accessToken, const std::string &app = "api");
 
-        structures::RedisToken refresh(const std::string &refreshToken);
+        RedisToken refresh(const std::string &refreshToken);
 
-        void verifyEmail(
-                const std::string &email,
-                const std::function<void(const drogon::HttpResponsePtr &)> &callback
-        );
+        void verifyEmail(const std::string &email);
 
         std::string seedEmail(const std::string &email);
 
-        [[nodiscard]] std::tuple<structures::RedisToken, bool> loginEmailCode(
+        [[nodiscard]] std::tuple<RedisToken, bool> loginEmailCode(
                 const std::string &email,
                 const std::string &code
         );
 
-        [[nodiscard]] structures::RedisToken loginEmailPassword(
+        [[nodiscard]] RedisToken loginEmailPassword(
                 const std::string &email,
                 const std::string &password
         );
@@ -85,12 +97,22 @@ namespace studio26f::plugins {
         [[nodiscard]] bool verifyLimit(const std::string &type, const std::string &key) const;
 
     private:
-        std::chrono::seconds _ipInterval{}, _verifyInterval{}, _loginInterval{};
+        std::chrono::seconds _ipInterval{}, _loginInterval{}, _verifyInterval{},
+                _accessExpiration{}, _refreshExpiration{}, _emailExpiration{};
         uint64_t _ipMaxCount{}, _verifyMaxCount{}, _loginMaxCount{};
 
-        std::unique_ptr<studio26f::structures::PlayerRedis> _playerRedis;
         drogon::orm::Mapper<drogon_model::studio26f::Player> _playerMapper;
 
+        int64_t _getIdByAccessToken(const std::string &accessToken, const std::string &app = "api");
+
         void _checkEmailCode(const std::string &email, const std::string &code);
+
+        void _setEmailCode(const std::string &email, const std::string &code);
+
+        RedisToken _generateTokens(const std::string &userId);
+
+        std::string _generateAccessToken(const std::string &userId);
+
+        std::string _generateRefreshToken(const std::string &userId);
     };
 }

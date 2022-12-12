@@ -256,7 +256,7 @@ void EmailManager::smtp(
         const string &content,
         bool isHTML,
         const function<void(bool, const string &)> &callback
-) {
+) noexcept {
     const auto resolver = app().getResolver();
     resolver->resolve(_server, [=, this](const InetAddress &resolvedAddr) {
         const auto threadNum = app().getThreadNum();
@@ -302,5 +302,19 @@ void EmailManager::smtp(
         );
         tcpSocket->connect();
     });
+}
+
+pair<bool, string> EmailManager::smtp(
+        const string &receiverEmail,
+        const string &subject,
+        const string &content,
+        bool isHTML
+) {
+    promise<pair<bool, string>> resultPromise;
+    auto resultFuture = resultPromise.get_future();
+    smtp(receiverEmail, subject, content, isHTML, [&resultPromise](bool success, const string &msg) {
+        resultPromise.set_value({success, msg});
+    });
+    return resultFuture.get();
 }
 

@@ -59,8 +59,8 @@ class Player
     const static std::string tableName;
     const static bool hasPrimaryKey;
     const static std::string primaryKeyName;
-    using PrimaryKeyType = void;
-    int getPrimaryKey() const { assert(false); return 0; }
+    using PrimaryKeyType = int64_t;
+    const PrimaryKeyType &getPrimaryKey() const;
 
     /**
      * @brief constructor
@@ -254,13 +254,13 @@ class Player
   public:
     static const std::string &sqlForFindingByPrimaryKey()
     {
-        static const std::string sql="";
+        static const std::string sql="select * from " + tableName + " where id = $1";
         return sql;
     }
 
     static const std::string &sqlForDeletingByPrimaryKey()
     {
-        static const std::string sql="";
+        static const std::string sql="delete from " + tableName + " where id = $1";
         return sql;
     }
     std::string sqlForInserting(bool &needSelection) const
@@ -320,6 +320,7 @@ class Player
             sql += "phone,";
             ++parametersCount;
         }
+        needSelection=true;
         if(parametersCount > 0)
         {
             sql[sql.length()-1]=')';
