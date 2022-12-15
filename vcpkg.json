@@ -20,6 +20,7 @@
         "redis"
       ]
     },
-    "magic-enum"
+    "magic-enum",
+    "range-v3"
   ]
 }

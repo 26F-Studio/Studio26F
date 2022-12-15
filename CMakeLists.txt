@@ -29,12 +29,17 @@ add_executable(${PROJECT_NAME} main.cc)
 find_package(cryptopp CONFIG REQUIRED)
 find_package(Drogon CONFIG REQUIRED)
 find_package(magic_enum CONFIG REQUIRED)
+find_package(range-v3 CONFIG REQUIRED)
 
 target_link_libraries(${PROJECT_NAME}
         PRIVATE
-        cryptopp-static
+        cryptopp::cryptopp
         Drogon::Drogon
-        magic_enum::magic_enum)
+        magic_enum::magic_enum
+        range-v3
+        range-v3-meta
+        range-v3::meta
+        range-v3-concepts)
 
 target_include_directories(${PROJECT_NAME}
         PRIVATE
