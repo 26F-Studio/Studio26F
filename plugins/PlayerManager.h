@@ -25,8 +25,6 @@ namespace studio26f::plugins {
 
             RedisToken(RedisToken &&redisToken) noexcept;
 
-            [[nodiscard]] std::string &access();
-
             [[nodiscard]] Json::Value parse() const;
 
         private:
@@ -40,7 +38,7 @@ namespace studio26f::plugins {
 
         void shutdown() override;
 
-        [[nodiscard]] int64_t getPlayerId(const std::string &accessToken, const std::string &app = "api");
+        [[nodiscard]] int64_t getPlayerIdByAccessToken(const std::string &accessToken);
 
         RedisToken refresh(const std::string &refreshToken);
 
@@ -50,12 +48,14 @@ namespace studio26f::plugins {
 
         [[nodiscard]] std::tuple<RedisToken, bool> loginEmailCode(
                 const std::string &email,
-                const std::string &code
+                const std::string &code,
+                bool record = true
         );
 
         [[nodiscard]] RedisToken loginEmailPassword(
                 const std::string &email,
-                const std::string &password
+                const std::string &password,
+                bool record = true
         );
 
         void resetEmail(
@@ -90,11 +90,11 @@ namespace studio26f::plugins {
                 helpers::RequestJson request
         );
 
-        [[nodiscard]] bool ipLimit(const std::string &ip) const;
+        bool ipLimit(const std::string &ip);
 
-        [[nodiscard]] bool loginLimit(const std::string &type, const std::string &key) const;
+        bool loginLimit(const std::string &type, const std::string &key);
 
-        [[nodiscard]] bool verifyLimit(const std::string &type, const std::string &key) const;
+        bool verifyLimit(const std::string &type, const std::string &key);
 
     private:
         std::chrono::seconds _ipInterval{}, _loginInterval{}, _verifyInterval{},
@@ -103,16 +103,14 @@ namespace studio26f::plugins {
 
         drogon::orm::Mapper<drogon_model::studio26f::Player> _playerMapper;
 
-        int64_t _getIdByAccessToken(const std::string &accessToken, const std::string &app = "api");
-
         void _checkEmailCode(const std::string &email, const std::string &code);
 
         void _setEmailCode(const std::string &email, const std::string &code);
 
-        RedisToken _generateTokens(const std::string &userId);
+        RedisToken _generateTokens(const std::string &userId, bool record = true);
 
-        std::string _generateAccessToken(const std::string &userId);
+        std::string _generateAccessToken(const std::string &userId, bool record = true);
 
-        std::string _generateRefreshToken(const std::string &userId);
+        std::string _generateRefreshToken(const std::string &userId, bool record = true);
     };
 }

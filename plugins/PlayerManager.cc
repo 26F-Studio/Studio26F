@@ -6,12 +6,17 @@
 #include <magic_enum.hpp>
 #include <plugins/EmailManager.h>
 #include <plugins/PlayerManager.h>
+#include <range/v3/all.hpp>
 #include <structures/ExceptionHandlers.h>
 #include <structures/Exceptions.h>
 #include <types/Permission.h>
 #include <utils/crypto.h>
 #include <utils/data.h>
 #include <utils/io.h>
+
+using ranges::to;
+namespace view = ranges::view;
+namespace views = ranges::views;
 
 using namespace drogon;
 using namespace magic_enum;
@@ -32,8 +37,6 @@ PlayerManager::RedisToken::RedisToken(RedisToken &&redisToken) noexcept:
         _accessToken(std::move(redisToken._accessToken)),
         _refreshToken(std::move(redisToken._refreshToken)) {}
 
-string &PlayerManager::RedisToken::access() { return _accessToken; }
-
 Json::Value PlayerManager::RedisToken::parse() const {
     Json::Value result;
     result["accessToken"] = _accessToken;
@@ -41,7 +44,7 @@ Json::Value PlayerManager::RedisToken::parse() const {
     return result;
 }
 
-PlayerManager::PlayerManager() : _playerMapper(app().getDbClient()) {}
+PlayerManager::PlayerManager() : RedisHelper(CMAKE_PROJECT_NAME), _playerMapper(app().getDbClient()) {}
 
 void PlayerManager::initAndStart(const Json::Value &config) {
     if (!(
@@ -52,27 +55,27 @@ void PlayerManager::initAndStart(const Json::Value &config) {
         LOG_ERROR << R"("Invalid expiration config")";
         abort();
     }
-    _accessExpiration = chrono::seconds(config["expirations"]["access"].asUInt64());
-    _refreshExpiration = chrono::seconds(config["expirations"]["refresh"].asUInt64());
-    _emailExpiration = chrono::seconds(config["expirations"]["email"].asUInt64());
+    _accessExpiration = chrono::minutes(config["expirations"]["access"].asUInt64());
+    _refreshExpiration = chrono::minutes(config["expirations"]["refresh"].asUInt64());
+    _emailExpiration = chrono::minutes(config["expirations"]["email"].asUInt64());
 
     if (!(
-            config["tokenBucket"]["ip"]["interval"].isUInt64() &&
-            config["tokenBucket"]["ip"]["maxCount"].isUInt64() &&
-            config["tokenBucket"]["login"]["interval"].isUInt64() &&
-            config["tokenBucket"]["login"]["maxCount"].isUInt64() &&
-            config["tokenBucket"]["verify"]["interval"].isUInt64() &&
-            config["tokenBucket"]["verify"]["maxCount"].isUInt64()
+            config["tokenBuckets"]["ip"]["interval"].isUInt64() &&
+            config["tokenBuckets"]["ip"]["maxCount"].isUInt64() &&
+            config["tokenBuckets"]["login"]["interval"].isUInt64() &&
+            config["tokenBuckets"]["login"]["maxCount"].isUInt64() &&
+            config["tokenBuckets"]["verify"]["interval"].isUInt64() &&
+            config["tokenBuckets"]["verify"]["maxCount"].isUInt64()
     )) {
         LOG_ERROR << R"(Invalid tokenBucket config)";
         abort();
     }
-    _ipInterval = chrono::seconds(config["tokenBucket"]["ip"]["interval"].asUInt64());
-    _ipMaxCount = config["tokenBucket"]["ip"]["maxCount"].asUInt64();
-    _loginInterval = chrono::seconds(config["tokenBucket"]["login"]["interval"].asUInt64());
-    _loginMaxCount = config["tokenBucket"]["login"]["maxCount"].asUInt64();
-    _verifyInterval = chrono::seconds(config["tokenBucket"]["verify"]["interval"].asUInt64());
-    _verifyMaxCount = config["tokenBucket"]["verify"]["maxCount"].asUInt64();
+    _ipInterval = chrono::seconds(config["tokenBuckets"]["ip"]["interval"].asUInt64());
+    _ipMaxCount = config["tokenBuckets"]["ip"]["maxCount"].asUInt64();
+    _loginInterval = chrono::seconds(config["tokenBuckets"]["login"]["interval"].asUInt64());
+    _loginMaxCount = config["tokenBuckets"]["login"]["maxCount"].asUInt64();
+    _verifyInterval = chrono::seconds(config["tokenBuckets"]["verify"]["interval"].asUInt64());
+    _verifyMaxCount = config["tokenBuckets"]["verify"]["maxCount"].asUInt64();
 
     LOG_INFO << "PlayerManager loaded.";
 }
@@ -81,9 +84,9 @@ void PlayerManager::shutdown() {
     LOG_INFO << "PlayerManager shutdown.";
 }
 
-int64_t PlayerManager::getPlayerId(const string &accessToken, const string &app) {
+int64_t PlayerManager::getPlayerIdByAccessToken(const string &accessToken) {
     try {
-        return _getIdByAccessToken(accessToken, app);
+        return stoll(get(data::join({"auth", "access-id", accessToken}, ':')));
     } catch (const redis_exception::KeyNotFound &e) {
         throw ResponseException(
                 i18n("invalidAccessToken"),
@@ -96,7 +99,7 @@ int64_t PlayerManager::getPlayerId(const string &accessToken, const string &app)
 
 PlayerManager::RedisToken PlayerManager::refresh(const string &refreshToken) {
     try {
-        const auto userId = get("auth:refresh-id:" + refreshToken);
+        const auto userId = get(data::join({"auth", "refresh-id", refreshToken}, ':'));
         return _generateTokens(userId);
     } catch (const redis_exception::KeyNotFound &e) {
         throw ResponseException(
@@ -109,8 +112,9 @@ PlayerManager::RedisToken PlayerManager::refresh(const string &refreshToken) {
 }
 
 void PlayerManager::verifyEmail(const string &email) {
-    auto code = data::randomString(8);
+    const auto code = data::randomString(8);
     _setEmailCode(email, code);
+    // TODO: Make I18N emails
     auto mailContent = io::getFileContent("./verifyEmail.html");
     drogon::utils::replaceAll(
             mailContent,
@@ -151,7 +155,11 @@ string PlayerManager::seedEmail(const string &email) {
     }
 }
 
-tuple<PlayerManager::RedisToken, bool> PlayerManager::loginEmailCode(const string &email, const string &code) {
+tuple<PlayerManager::RedisToken, bool> PlayerManager::loginEmailCode(
+        const string &email,
+        const string &code,
+        bool record
+) {
     _checkEmailCode(email, code);
 
     Player player;
@@ -177,12 +185,16 @@ tuple<PlayerManager::RedisToken, bool> PlayerManager::loginEmailCode(const strin
     }
 
     return {
-            _generateTokens(to_string(player.getValueOfId())),
+            _generateTokens(to_string(player.getValueOfId()), record),
             player.getPasswordHash() == nullptr
     };
 }
 
-PlayerManager::RedisToken PlayerManager::loginEmailPassword(const string &email, const string &password) {
+PlayerManager::RedisToken PlayerManager::loginEmailPassword(
+        const string &email,
+        const string &password,
+        bool record
+) {
     try {
         auto player = _playerMapper.findOne(orm::Criteria(
                 Player::Cols::_email,
@@ -204,7 +216,7 @@ PlayerManager::RedisToken PlayerManager::loginEmailPassword(const string &email,
             throw orm::UnexpectedRows("Incorrect password");
         }
 
-        return _generateTokens(id);
+        return _generateTokens(id, record);
     } catch (const orm::UnexpectedRows &) {
         LOG_DEBUG << "invalidEmailPass: " << email;
         throw ResponseException(
@@ -300,7 +312,7 @@ void PlayerManager::deactivateEmail(
 string PlayerManager::getAvatar(const string &accessToken, int64_t playerId) {
     int64_t targetId = playerId;
     NO_EXCEPTION(
-            targetId = _getIdByAccessToken(accessToken);
+            targetId = getPlayerIdByAccessToken(accessToken);
     )
     try {
         auto player = _playerMapper.findOne(orm::Criteria(
@@ -325,7 +337,7 @@ Json::Value PlayerManager::getPlayerInfo(
 ) {
     int64_t targetId = playerId;
     NO_EXCEPTION(
-            targetId = _getIdByAccessToken(accessToken);
+            targetId = getPlayerIdByAccessToken(accessToken);
     )
     try {
         auto player = _playerMapper.findOne(orm::Criteria(
@@ -369,32 +381,32 @@ void PlayerManager::updatePlayerInfo(
     _playerMapper.update(player);
 }
 
-bool PlayerManager::ipLimit(const string &ip) const {
+bool PlayerManager::ipLimit(const string &ip) {
     return tokenBucket(
-            "ip:" + ip,
+            data::join({"ip", ip}, ':'),
             _ipInterval,
             _ipMaxCount
     );
 }
 
-bool PlayerManager::loginLimit(const string &type, const string &key) const {
+bool PlayerManager::loginLimit(const string &type, const string &key) {
     return tokenBucket(
-            "code:" + type + ":" + key,
+            data::join({"code", type, key}, ':'),
             _loginInterval,
             _loginMaxCount
     );
 }
 
-bool PlayerManager::verifyLimit(const string &type, const string &key) const {
+bool PlayerManager::verifyLimit(const string &type, const string &key) {
     return tokenBucket(
-            "verify:" + type + ":" + key,
+            data::join({"verify", type, key}, ':'),
             _verifyInterval,
             _verifyMaxCount
     );
 }
 
 void PlayerManager::_checkEmailCode(const string &email, const string &code) {
-    const auto key = "api:auth:code:email:" + email;
+    const auto key = data::join({"auth", "code", "email", email}, ':');
     if (exists({key})) {
         if (get(key) != code) {
             throw ResponseException(
@@ -403,7 +415,7 @@ void PlayerManager::_checkEmailCode(const string &email, const string &code) {
                     k403Forbidden
             );
         }
-        del({"api:auth:code:email:" + email});
+        del({data::join({"auth", "code", "email", email}, ':')});
     } else {
         throw ResponseException(
                 i18n("invalidEmail"),
@@ -414,46 +426,52 @@ void PlayerManager::_checkEmailCode(const string &email, const string &code) {
 }
 
 void PlayerManager::_setEmailCode(const string &email, const string &code) {
-    setEx("api:auth:code:email:" + email, _emailExpiration.count(), code);
+    setPx(
+            data::join({"auth", "code", "email", email}, ':'),
+            code,
+            _emailExpiration
+    );
 }
 
-PlayerManager::RedisToken PlayerManager::_generateTokens(const string &userId) {
-    NO_EXCEPTION(
-            del({"auth:refresh-id:" + get(
-                    "auth:id-refresh:" + userId
-            )});
-    )
+PlayerManager::RedisToken PlayerManager::_generateTokens(const string &userId, bool record) {
+    if (record) {
+        NO_EXCEPTION(
+                del({data::join({"auth", "refresh-id", get(
+                        data::join({"auth", "id-refresh", userId}, ':')
+                )}, ':')});
+        )
+    }
     return {
-            _generateAccessToken(userId),
-            _generateRefreshToken(userId)
+            _generateAccessToken(userId, record),
+            _generateRefreshToken(userId, record)
     };
 }
 
-string PlayerManager::_generateAccessToken(const string &userId) {
+string PlayerManager::_generateAccessToken(const string &userId, bool record) {
     auto accessToken = crypto::blake2B(drogon::utils::getUuid());
-    setEx(
-            "auth:access-id:" + accessToken,
-            _accessExpiration.count(),
-            userId
-    );
+    if (record) {
+        setPx(
+                data::join({"auth", "access-id", accessToken}, ':'),
+                userId,
+                _accessExpiration
+        );
+    }
     return accessToken;
 }
 
-string PlayerManager::_generateRefreshToken(const string &userId) {
+string PlayerManager::_generateRefreshToken(const string &userId, bool record) {
     auto refreshToken = crypto::keccak(drogon::utils::getUuid());
-    setEx({{
-                   "auth:id-refresh:" + userId,
-                   _refreshExpiration.count(),
-                   refreshToken
-           },
-           {
-                   "auth:refresh-id:" + refreshToken,
-                   _refreshExpiration.count(),
-                   userId
-           }});
+    if (record) {
+        setPx({{
+                       data::join({"auth", "id-refresh", userId}, ':'),
+                       refreshToken,
+                       _refreshExpiration,
+               },
+               {
+                       data::join({"auth", "refresh-id", refreshToken}, ':'),
+                       userId,
+                       _refreshExpiration,
+               }});
+    }
     return refreshToken;
-}
-
-int64_t PlayerManager::_getIdByAccessToken(const string &accessToken, const string &app) {
-    return stoll(get(app + ":auth:access-id:" + accessToken));
 }
