@@ -10,12 +10,13 @@
 #include <types/ResultCode.h>
 
 using namespace drogon;
-using namespace drogon_model;
 using namespace magic_enum;
 using namespace std;
 using namespace studio26f::filters;
 using namespace studio26f::structures;
 using namespace studio26f::types;
+
+using Player = drogon_model::studio26f::Player;
 
 void CheckPermission::doFilter(
         const HttpRequestPtr &req,
@@ -26,7 +27,7 @@ void CheckPermission::doFilter(
     try {
         try {
             if (enum_cast<Permission>(
-                    orm::Mapper<techrater::Player>(app().getDbClient())
+                    orm::Mapper<Player>(app().getDbClient())
                             .findByPrimaryKey(playerId)
                             .getValueOfPermission()
             ).value() < Permission::Admin) {

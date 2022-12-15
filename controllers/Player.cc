@@ -47,25 +47,3 @@ void Player::updateInfo(const HttpRequestPtr &req, function<void(const HttpRespo
     }, response);
     response.to(callback);
 }
-
-void Player::getData(const HttpRequestPtr &req, function<void(const HttpResponsePtr &)> &&callback) {
-    ResponseJson response;
-    handleExceptions([&]() {
-        response.setData(_playerManager->getPlayerData(
-                req->attributes()->get<string>("accessToken"),
-                req->attributes()->get<int64_t>("playerId")
-        ));
-    }, response);
-    response.to(callback);
-}
-
-void Player::updateData(const HttpRequestPtr &req, function<void(const HttpResponsePtr &)> &&callback) {
-    ResponseJson response;
-    handleExceptions([&]() {
-        _playerManager->updatePlayerData(
-                req->attributes()->get<int64_t>("playerId"),
-                req->attributes()->get<RequestJson>("requestJson")
-        );
-    }, response);
-    response.to(callback);
-}

@@ -16,4 +16,5 @@ namespace studio26f::utils::datetime {
     trantor::Date toDate(const std::string &date = std::string());
 
     trantor::Date toDate(const int64_t &microseconds);
+
 }
