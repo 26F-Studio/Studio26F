@@ -5,7 +5,6 @@
 #include <controllers/Auth.h>
 #include <helpers/RequestJson.h>
 #include <helpers/ResponseJson.h>
-#include <structures/Exceptions.h>
 
 using namespace drogon;
 using namespace std;
