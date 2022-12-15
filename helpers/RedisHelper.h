@@ -9,13 +9,7 @@
 namespace studio26f::helpers {
     class RedisHelper {
     public:
-        explicit RedisHelper(std::string BaseKey = CMAKE_PROJECT_NAME);
-
-        [[nodiscard]] bool tokenBucket(
-                const std::string &key,
-                const std::chrono::microseconds &restoreInterval,
-                const uint64_t &maxCount
-        ) const;
+        explicit RedisHelper(std::string BaseKey);
 
         virtual ~RedisHelper();
 
@@ -27,55 +21,42 @@ namespace studio26f::helpers {
         using KeyPairs = std::vector<KeyPair<T>>;
 
         using SimpleResult = std::pair<bool, std::string>;
-        using SimpleResultCb = std::function<void(SimpleResult &&)>;
 
         using SimpleResults = std::vector<SimpleResult>;
-        using SimpleResultsCb = std::function<void(SimpleResults &&)>;
 
-        void del(const std::vector<std::string> &keys, const std::function<void(int64_t)> &callback) const noexcept;
-
-        [[nodiscard]] int64_t del(const std::vector<std::string> &keys) const;
-
-        void exists(const std::vector<std::string> &keys, const std::function<void(bool)> &callback) const noexcept;
-
-        [[nodiscard]] bool exists(const std::vector<std::string> &keys) const;
-
-        void expire(
+        bool tokenBucket(
                 const std::string &key,
-                const std::chrono::seconds &ttl,
-                const std::function<void(bool)> &callback
-        ) const noexcept;
+                const std::chrono::microseconds &restoreInterval,
+                const uint64_t &maxCount
+        );
 
-        [[nodiscard]] bool expire(const std::string &key, const std::chrono::seconds &ttl) const;
+        int64_t del(const std::vector<std::string> &keys);
 
-        void expire(
-                const KeyPairs<std::chrono::seconds> &params,
-                const std::function<void(std::vector<bool> &&)> &callback
-        ) const noexcept;
+        bool exists(const std::vector<std::string> &keys);
 
-        [[nodiscard]] std::vector<bool> expire(const KeyPairs<std::chrono::seconds> &params) const;
+        [[maybe_unused]] bool expire(const std::string &key, const std::chrono::seconds &ttl);
 
-        void get(const std::string &key, const SimpleResultCb &callback) const noexcept;
+        [[maybe_unused]] std::vector<bool> expire(const KeyPairs<std::chrono::seconds> &params);
 
-        [[nodiscard]] std::string get(const std::string &key) const;
+        std::vector<bool> pExpire(const KeyPairs<std::chrono::milliseconds> &params);
 
-        [[nodiscard]] int64_t incrBy(const std::string &key, const int64_t &value = 1) const;
+        std::string get(const std::string &key);
 
-        [[nodiscard]] int64_t decrBy(const std::string &key, const int64_t &value = 1) const;
+        int64_t incrBy(const std::string &key, const int64_t &value = 1);
 
-        void set(const std::string &key, const std::string &value, const SimpleResultCb &callback) const noexcept;
+        int64_t decrBy(const std::string &key, const int64_t &value = 1);
 
-        [[nodiscard]] SimpleResult set(const std::string &key, const std::string &value) const;
+        SimpleResult set(const std::string &key, const std::string &value);
 
-        void set(const KeyPairs<std::string> &params, const SimpleResultsCb &callback) const noexcept;
+        SimpleResults set(const std::vector<std::tuple<std::string, std::string>> &params);
 
-        [[nodiscard]] SimpleResults set(const KeyPairs<std::string> &params) const;
+        SimpleResult setPx(const std::string &key, const std::string &value, const std::chrono::milliseconds &ttl);
 
-        [[nodiscard]] std::string setEx(const std::string &key, int64_t ttl, const std::string &value) const;
+        SimpleResults setPx(const std::vector<std::tuple<std::string, std::string, std::chrono::milliseconds>> &params);
 
-        [[nodiscard]] SimpleResults setEx(
-                const std::vector<std::tuple<std::string, int64_t, std::string>> &params
-        ) const;
+        [[maybe_unused]] std::chrono::seconds ttl(const std::string &key);
+
+        [[maybe_unused]] std::chrono::milliseconds pTtl(const std::string &key);
 
     private:
         std::string _baseKey;
