@@ -24,15 +24,38 @@ namespace studio26f::helpers {
 
         using SimpleResults = std::vector<SimpleResult>;
 
+        static constexpr auto voidCb =
+                [](const drogon::nosql::RedisResult &result) {};
+        static constexpr auto traceCb =
+                [](const drogon::nosql::RedisResult &result) {
+                    LOG_TRACE << result.getStringForDisplayingWithIndent();
+                };
+        static constexpr auto errorCb =
+                [](const std::exception &error) {
+                    LOG_ERROR << error.what();
+                };
+        static constexpr auto intCb =
+                [](const drogon::nosql::RedisResult &result) -> int64_t {
+                    return result.asInteger();
+                };
+        static constexpr auto stringCb =
+                [](const drogon::nosql::RedisResult &result) -> std::string {
+                    return result.asString();
+                };
+        static constexpr auto simpleCb =
+                [](const drogon::nosql::RedisResult &result) -> SimpleResult {
+                    return {result.asString() == "OK", result.asString()};
+                };
+
         bool tokenBucket(
                 const std::string &key,
                 const std::chrono::microseconds &restoreInterval,
                 const uint64_t &maxCount
         );
 
-        int64_t del(const std::vector<std::string> &keys);
+        int64_t del(const std::string &key);
 
-        bool exists(const std::vector<std::string> &keys);
+        bool exists(const std::string &key);
 
         [[maybe_unused]] bool expire(const std::string &key, const std::chrono::seconds &ttl);
 
