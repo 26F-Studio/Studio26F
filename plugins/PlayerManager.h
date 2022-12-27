@@ -21,14 +21,19 @@ namespace studio26f::plugins {
 
         class RedisToken {
         public:
-            RedisToken(std::string access, std::string refresh);
+            RedisToken(
+                    std::string access,
+                    std::string refresh,
+                    std::chrono::milliseconds accessTokenExpire,
+                    std::chrono::milliseconds refreshTokenExpire
+            );
 
             RedisToken(RedisToken &&redisToken) noexcept;
 
             [[nodiscard]] Json::Value parse() const;
 
-        private:
-            std::string _accessToken, _refreshToken;
+            const std::string accessToken, refreshToken;
+            const std::chrono::milliseconds accessTokenExpire, refreshTokenExpire;
         };
 
     public:
@@ -38,7 +43,7 @@ namespace studio26f::plugins {
 
         void shutdown() override;
 
-        [[nodiscard]] int64_t getPlayerIdByAccessToken(const std::string &accessToken);
+        int64_t getPlayerIdByAccessToken(const std::string &accessToken);
 
         RedisToken refresh(const std::string &refreshToken);
 
@@ -46,17 +51,9 @@ namespace studio26f::plugins {
 
         std::string seedEmail(const std::string &email);
 
-        [[nodiscard]] std::tuple<RedisToken, bool> loginEmailCode(
-                const std::string &email,
-                const std::string &code,
-                bool record = true
-        );
+        std::tuple<RedisToken, bool> loginEmailCode(const std::string &email,const std::string &code);
 
-        [[nodiscard]] RedisToken loginEmailPassword(
-                const std::string &email,
-                const std::string &password,
-                bool record = true
-        );
+        RedisToken loginEmailPassword(const std::string &email,const std::string &password);
 
         void resetEmail(
                 const std::string &email,
@@ -75,12 +72,12 @@ namespace studio26f::plugins {
                 const std::string &code
         );
 
-        [[nodiscard]] std::string getAvatar(
+        std::string getAvatar(
                 const std::string &accessToken,
                 int64_t playerId
         );
 
-        [[nodiscard]] Json::Value getPlayerInfo(
+        Json::Value getPlayerInfo(
                 const std::string &accessToken,
                 int64_t playerId
         );
@@ -107,10 +104,10 @@ namespace studio26f::plugins {
 
         void _setEmailCode(const std::string &email, const std::string &code);
 
-        RedisToken _generateTokens(const std::string &userId, bool record = true);
+        RedisToken _generateTokens(const std::string &userId);
 
-        std::string _generateAccessToken(const std::string &userId, bool record = true);
+        std::string _generateAccessToken(const std::string &userId);
 
-        std::string _generateRefreshToken(const std::string &userId, bool record = true);
+        std::string _generateRefreshToken(const std::string &userId);
     };
 }

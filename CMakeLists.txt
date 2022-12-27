@@ -24,7 +24,7 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
     add_compile_definitions(_CRT_SECURE_NO_WARNINGS NOMINMAX)
 endif ()
 
-add_executable(${PROJECT_NAME} main.cc)
+add_executable(${PROJECT_NAME} main.cc types/Applications.h)
 
 find_package(cryptopp CONFIG REQUIRED)
 find_package(Drogon CONFIG REQUIRED)
@@ -70,5 +70,10 @@ target_sources(${PROJECT_NAME}
 
 add_subdirectory(test)
 
-install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/config.json ${CMAKE_CURRENT_SOURCE_DIR}/verifyEmail.html
-        DESTINATION ${CMAKE_BINARY_DIR})
+install(FILES
+        ${CMAKE_CURRENT_SOURCE_DIR}/config.json
+        ${CMAKE_CURRENT_SOURCE_DIR}/the26f_org.key
+        ${CMAKE_CURRENT_SOURCE_DIR}/the26f_org_integrated.crt
+        ${CMAKE_CURRENT_SOURCE_DIR}/verifyEmail.html
+        DESTINATION
+        ${CMAKE_BINARY_DIR})

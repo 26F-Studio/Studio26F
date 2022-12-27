@@ -5,8 +5,11 @@
 #include <controllers/Auth.h>
 #include <helpers/RequestJson.h>
 #include <helpers/ResponseJson.h>
+#include <magic_enum.hpp>
+#include <types/Applications.h>
 
 using namespace drogon;
+using namespace magic_enum;
 using namespace std;
 using namespace studio26f::api::v1;
 using namespace studio26f::helpers;

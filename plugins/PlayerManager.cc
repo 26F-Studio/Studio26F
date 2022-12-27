@@ -29,18 +29,28 @@ using namespace studio26f::utils;
 
 using Player = drogon_model::studio26f::Player;
 
-PlayerManager::RedisToken::RedisToken(string access, string refresh) :
-        _accessToken(std::move(access)),
-        _refreshToken(std::move(refresh)) {}
+PlayerManager::RedisToken::RedisToken(
+        string access,
+        string refresh,
+        chrono::milliseconds accessTokenExpire,
+        chrono::milliseconds refreshTokenExpire
+) : accessToken(std::move(access)),
+    refreshToken(std::move(refresh)),
+    accessTokenExpire(accessTokenExpire),
+    refreshTokenExpire(refreshTokenExpire) {}
 
 PlayerManager::RedisToken::RedisToken(RedisToken &&redisToken) noexcept:
-        _accessToken(std::move(redisToken._accessToken)),
-        _refreshToken(std::move(redisToken._refreshToken)) {}
+        accessToken(redisToken.accessToken),
+        refreshToken(redisToken.refreshToken),
+        accessTokenExpire(redisToken.accessTokenExpire),
+        refreshTokenExpire(redisToken.refreshTokenExpire) {}
 
 Json::Value PlayerManager::RedisToken::parse() const {
     Json::Value result;
-    result["accessToken"] = _accessToken;
-    result["refreshToken"] = _refreshToken;
+    result["accessToken"] = accessToken;
+    result["refreshToken"] = refreshToken;
+    result["accessTokenExpire"] = accessTokenExpire.count();
+    result["refreshTokenExpire"] = refreshTokenExpire.count();
     return result;
 }
 
@@ -146,20 +156,11 @@ string PlayerManager::seedEmail(const string &email) {
         ));
         return crypto::blake2B(to_string(player.getValueOfId()));
     } catch (const orm::UnexpectedRows &) {
-        LOG_DEBUG << "playerNotFound: " << email;
-        throw ResponseException(
-                i18n("playerNotFound"),
-                ResultCode::NotAcceptable,
-                k403Forbidden
-        );
+        return crypto::blake2B(to_string(-1));
     }
 }
 
-tuple<PlayerManager::RedisToken, bool> PlayerManager::loginEmailCode(
-        const string &email,
-        const string &code,
-        bool record
-) {
+tuple<PlayerManager::RedisToken, bool> PlayerManager::loginEmailCode(const string &email, const string &code) {
     _checkEmailCode(email, code);
 
     Player player;
@@ -185,16 +186,12 @@ tuple<PlayerManager::RedisToken, bool> PlayerManager::loginEmailCode(
     }
 
     return {
-            _generateTokens(to_string(player.getValueOfId()), record),
+            _generateTokens(to_string(player.getValueOfId())),
             player.getPasswordHash() == nullptr
     };
 }
 
-PlayerManager::RedisToken PlayerManager::loginEmailPassword(
-        const string &email,
-        const string &password,
-        bool record
-) {
+PlayerManager::RedisToken PlayerManager::loginEmailPassword(const string &email, const string &password) {
     try {
         auto player = _playerMapper.findOne(orm::Criteria(
                 Player::Cols::_email,
@@ -216,7 +213,7 @@ PlayerManager::RedisToken PlayerManager::loginEmailPassword(
             throw orm::UnexpectedRows("Incorrect password");
         }
 
-        return _generateTokens(id, record);
+        return _generateTokens(id);
     } catch (const orm::UnexpectedRows &) {
         LOG_DEBUG << "invalidEmailPass: " << email;
         throw ResponseException(
@@ -433,45 +430,41 @@ void PlayerManager::_setEmailCode(const string &email, const string &code) {
     );
 }
 
-PlayerManager::RedisToken PlayerManager::_generateTokens(const string &userId, bool record) {
-    if (record) {
-        NO_EXCEPTION(
-                del({data::join({"auth", "refresh-id", get(
-                        data::join({"auth", "id-refresh", userId}, ':')
-                )}, ':')});
-        )
-    }
+PlayerManager::RedisToken PlayerManager::_generateTokens(const string &userId) {
+    NO_EXCEPTION(
+            del({data::join({"auth", "refresh-id", get(
+                    data::join({"auth", "id-refresh", userId}, ':')
+            )}, ':')});
+    )
     return {
-            _generateAccessToken(userId, record),
-            _generateRefreshToken(userId, record)
+            _generateAccessToken(userId),
+            _generateRefreshToken(userId),
+            _accessExpiration,
+            _refreshExpiration
     };
 }
 
-string PlayerManager::_generateAccessToken(const string &userId, bool record) {
+string PlayerManager::_generateAccessToken(const string &userId) {
     auto accessToken = crypto::blake2B(drogon::utils::getUuid());
-    if (record) {
-        setPx(
-                data::join({"auth", "access-id", accessToken}, ':'),
-                userId,
-                _accessExpiration
-        );
-    }
+    setPx(
+            data::join({"auth", "access-id", accessToken}, ':'),
+            userId,
+            _accessExpiration
+    );
     return accessToken;
 }
 
-string PlayerManager::_generateRefreshToken(const string &userId, bool record) {
+string PlayerManager::_generateRefreshToken(const string &userId) {
     auto refreshToken = crypto::keccak(drogon::utils::getUuid());
-    if (record) {
-        setPx({{
-                       data::join({"auth", "id-refresh", userId}, ':'),
-                       refreshToken,
-                       _refreshExpiration,
-               },
-               {
-                       data::join({"auth", "refresh-id", refreshToken}, ':'),
-                       userId,
-                       _refreshExpiration,
-               }});
-    }
+    setPx({{
+                   data::join({"auth", "id-refresh", userId}, ':'),
+                   refreshToken,
+                   _refreshExpiration,
+           },
+           {
+                   data::join({"auth", "refresh-id", refreshToken}, ':'),
+                   userId,
+                   _refreshExpiration,
+           }});
     return refreshToken;
 }
