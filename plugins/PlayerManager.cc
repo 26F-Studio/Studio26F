@@ -83,8 +83,6 @@ void PlayerManager::shutdown() {
 }
 
 void PlayerManager::oauth(
-        const string &accessToken,
-        int64_t playerId,
         const string &product,
         const string &recaptcha,
         trantor::InetAddress address
@@ -117,7 +115,7 @@ void PlayerManager::oauth(
                     i18n("areYouARobot"),
                     internal::BaseException(to_string(response["score"].asDouble())),
                     ResultCode::NotAcceptable,
-                    drogon::k406NotAcceptable
+                    k406NotAcceptable
             );
         }
         if (!response["success"].asBool()) {
@@ -125,7 +123,7 @@ void PlayerManager::oauth(
                     i18n("recaptchaFailed"),
                     internal::BaseException(response["error-codes"][0].asString()),
                     ResultCode::NotAcceptable,
-                    drogon::k406NotAcceptable
+                    k406NotAcceptable
             );
         }
     }

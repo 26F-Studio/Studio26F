@@ -21,14 +21,12 @@ void Auth::oauth(const HttpRequestPtr &req, function<void(const HttpResponsePtr 
     JsonHelper response(k200OK, ResultCode::Completed);
     handleExceptions([&]() {
         auto request = req->attributes()->get<JsonHelper>("requestJson");
-        const auto accessToken = req->attributes()->get<string>("accessToken");
         _playerManager->oauth(
-                accessToken.empty() ? req->getHeader("x-access-token") : accessToken,
-                req->attributes()->get<int64_t>("playerId"),
                 request["product"].asString(),
                 request["recaptcha"].asString(),
                 req->getPeerAddr()
         );
+        const auto accessToken = req->attributes()->get<string>("accessToken");
         if (!accessToken.empty()) {
             Json::Value data;
             data["accessToken"] = accessToken;

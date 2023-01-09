@@ -26,8 +26,6 @@ namespace studio26f::plugins {
         void shutdown() override;
 
         void oauth(
-                const std::string &accessToken,
-                int64_t playerId,
                 const std::string &product,
                 const std::string &recaptcha,
                 trantor::InetAddress address
