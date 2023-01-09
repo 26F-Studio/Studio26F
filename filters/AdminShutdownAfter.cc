@@ -3,7 +3,7 @@
 //
 
 #include <filters/AdminShutdownAfter.h>
-#include <helpers/RequestJson.h>
+#include <helpers/JsonHelper.h>
 
 using namespace drogon;
 using namespace std;
@@ -17,10 +17,10 @@ void AdminShutdownAfter::doFilter(
         FilterChainCallback &&nextCb
 ) {
     handleExceptions([&]() {
-        auto request = RequestJson(req);
+        auto request = JsonHelper(req);
         request.require("delay", JsonValue::Double);
         if (request["delay"].asDouble() < 0) {
-            ResponseJson(k400BadRequest, ResultCode::InvalidArguments)
+            JsonHelper(k400BadRequest, ResultCode::InvalidArguments)
                     .setMessage(i18n("invalidArguments"))
                     .to(failedCb);
             return;

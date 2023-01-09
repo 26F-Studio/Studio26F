@@ -233,7 +233,6 @@ RedisHelper::SimpleResults RedisHelper::setPx(const vector<tuple<string, string,
     auto resultsFuture = resultsPromise.get_future();
     transaction->execute(
             [&](const nosql::RedisResult &result) {
-                LOG_DEBUG << result.getStringForDisplayingWithIndent();
                 const auto &resultsArray = result.asArray();
                 SimpleResults results;
                 results.reserve(resultsArray.size());
@@ -260,7 +259,7 @@ RedisHelper::SimpleResults RedisHelper::setPx(const vector<tuple<string, string,
     );
 }
 
-[[maybe_unused]] chrono::milliseconds RedisHelper::pTtl(const string &key) {
+chrono::milliseconds RedisHelper::pTtl(const string &key) {
     const auto tempKey = _baseKey + ":" + key;
     return _redisClient->execCommandSync<chrono::milliseconds>(
             [=](const nosql::RedisResult &result) {

@@ -29,31 +29,6 @@ using namespace studio26f::utils;
 
 using Player = drogon_model::studio26f::Player;
 
-PlayerManager::RedisToken::RedisToken(
-        string access,
-        string refresh,
-        chrono::milliseconds accessTokenExpire,
-        chrono::milliseconds refreshTokenExpire
-) : accessToken(std::move(access)),
-    refreshToken(std::move(refresh)),
-    accessTokenExpire(accessTokenExpire),
-    refreshTokenExpire(refreshTokenExpire) {}
-
-PlayerManager::RedisToken::RedisToken(RedisToken &&redisToken) noexcept:
-        accessToken(redisToken.accessToken),
-        refreshToken(redisToken.refreshToken),
-        accessTokenExpire(redisToken.accessTokenExpire),
-        refreshTokenExpire(redisToken.refreshTokenExpire) {}
-
-Json::Value PlayerManager::RedisToken::parse() const {
-    Json::Value result;
-    result["accessToken"] = accessToken;
-    result["refreshToken"] = refreshToken;
-    result["accessTokenExpire"] = accessTokenExpire.count();
-    result["refreshTokenExpire"] = refreshTokenExpire.count();
-    return result;
-}
-
 PlayerManager::PlayerManager() : RedisHelper(CMAKE_PROJECT_NAME), _playerMapper(app().getDbClient()) {}
 
 void PlayerManager::initAndStart(const Json::Value &config) {
@@ -87,11 +62,73 @@ void PlayerManager::initAndStart(const Json::Value &config) {
     _verifyInterval = chrono::seconds(config["tokenBuckets"]["verify"]["interval"].asUInt64());
     _verifyMaxCount = config["tokenBuckets"]["verify"]["maxCount"].asUInt64();
 
+    if (!(
+            config["oauth"]["secret"].isString() &&
+            config["oauth"]["hosts"]["quatrack"].isString() &&
+            config["oauth"]["hosts"]["techmino"].isString() &&
+            config["oauth"]["hosts"]["techminoGalaxy"].isString()
+    )) {
+        LOG_ERROR << R"(Invalid recaptcha config)";
+        abort();
+    }
+    _recaptchaSecret = config["oauth"]["secret"].asString();
+    _productAddressMap[Products::quatrack] = config["oauth"]["hosts"]["quatrack"].asString();
+    _productAddressMap[Products::techmino] = config["oauth"]["hosts"]["techmino"].asString();
+    _productAddressMap[Products::techminoGalaxy] = config["oauth"]["hosts"]["techminoGalaxy"].asString();
     LOG_INFO << "PlayerManager loaded.";
 }
 
 void PlayerManager::shutdown() {
     LOG_INFO << "PlayerManager shutdown.";
+}
+
+void PlayerManager::oauth(
+        const string &accessToken,
+        int64_t playerId,
+        const string &product,
+        const string &recaptcha,
+        trantor::InetAddress address
+) {
+    const auto productOptional = enum_cast<Products>(product);
+    if (!productOptional.has_value()) {
+        throw ResponseException(
+                i18n("invalidArguments"),
+                ResultCode::InvalidArguments,
+                k400BadRequest
+        );
+    }
+    {
+        setClient("https://www.recaptcha.net");
+        const auto response = request(
+                Post,
+                "/recaptcha/api/siteverify",
+                {
+                        {"secret",   _recaptchaSecret},
+                        {"response", recaptcha},
+                        {"remoteip", address.toIp()},
+                },
+                {
+                        {"success", JsonValue::Bool}
+                }
+        );
+        if (response["score"].isDouble() &&
+            response["score"].asDouble() < 0.3) {
+            throw ResponseException(
+                    i18n("areYouARobot"),
+                    internal::BaseException(to_string(response["score"].asDouble())),
+                    ResultCode::NotAcceptable,
+                    drogon::k406NotAcceptable
+            );
+        }
+        if (!response["success"].asBool()) {
+            throw ResponseException(
+                    i18n("recaptchaFailed"),
+                    internal::BaseException(response["error-codes"][0].asString()),
+                    ResultCode::NotAcceptable,
+                    drogon::k406NotAcceptable
+            );
+        }
+    }
 }
 
 int64_t PlayerManager::getPlayerIdByAccessToken(const string &accessToken) {
@@ -107,13 +144,17 @@ int64_t PlayerManager::getPlayerIdByAccessToken(const string &accessToken) {
     }
 }
 
-PlayerManager::RedisToken PlayerManager::refresh(const string &refreshToken) {
+bool PlayerManager::tryRefresh(string &accessToken) {
     try {
-        const auto userId = get(data::join({"auth", "refresh-id", refreshToken}, ':'));
-        return _generateTokens(userId);
+        const auto ttl = chrono::milliseconds(pTtl(data::join({"auth", "access-id", accessToken}, ':')));
+        if (ttl < _refreshExpiration) {
+            accessToken = _generateAccessToken(to_string(getPlayerIdByAccessToken(accessToken)));
+            return true;
+        }
+        return false;
     } catch (const redis_exception::KeyNotFound &e) {
         throw ResponseException(
-                i18n("invalidRefreshToken"),
+                i18n("invalidAccessToken"),
                 e,
                 ResultCode::NotAcceptable,
                 k401Unauthorized
@@ -160,7 +201,7 @@ string PlayerManager::seedEmail(const string &email) {
     }
 }
 
-tuple<PlayerManager::RedisToken, bool> PlayerManager::loginEmailCode(const string &email, const string &code) {
+tuple<string, bool> PlayerManager::loginEmailCode(const string &email, const string &code) {
     _checkEmailCode(email, code);
 
     Player player;
@@ -186,12 +227,12 @@ tuple<PlayerManager::RedisToken, bool> PlayerManager::loginEmailCode(const strin
     }
 
     return {
-            _generateTokens(to_string(player.getValueOfId())),
+            _generateAccessToken(to_string(player.getValueOfId())),
             player.getPasswordHash() == nullptr
     };
 }
 
-PlayerManager::RedisToken PlayerManager::loginEmailPassword(const string &email, const string &password) {
+string PlayerManager::loginEmailPassword(const string &email, const string &password) {
     try {
         auto player = _playerMapper.findOne(orm::Criteria(
                 Player::Cols::_email,
@@ -213,7 +254,7 @@ PlayerManager::RedisToken PlayerManager::loginEmailPassword(const string &email,
             throw orm::UnexpectedRows("Incorrect password");
         }
 
-        return _generateTokens(id);
+        return _generateAccessToken(id);
     } catch (const orm::UnexpectedRows &) {
         LOG_DEBUG << "invalidEmailPass: " << email;
         throw ResponseException(
@@ -328,10 +369,7 @@ string PlayerManager::getAvatar(const string &accessToken, int64_t playerId) {
     }
 }
 
-Json::Value PlayerManager::getPlayerInfo(
-        const string &accessToken,
-        int64_t playerId
-) {
+Json::Value PlayerManager::getPlayerInfo(const string &accessToken, int64_t playerId) {
     int64_t targetId = playerId;
     NO_EXCEPTION(
             targetId = getPlayerIdByAccessToken(accessToken);
@@ -359,18 +397,8 @@ Json::Value PlayerManager::getPlayerInfo(
     }
 }
 
-void PlayerManager::updatePlayerInfo(
-        int64_t playerId,
-        RequestJson request
-) {
+void PlayerManager::updatePlayerInfo(int64_t playerId, JsonHelper request) {
     auto player = _playerMapper.findByPrimaryKey(playerId);
-    if (player.getPasswordHash() == nullptr) {
-        throw ResponseException(
-                i18n("noPassword"),
-                ResultCode::NullValue,
-                k403Forbidden
-        );
-    }
     if (request.check("avatar", JsonValue::String)) {
         player.setAvatarHash(crypto::blake2B(request["avatar"].asString()));
     }
@@ -430,41 +458,12 @@ void PlayerManager::_setEmailCode(const string &email, const string &code) {
     );
 }
 
-PlayerManager::RedisToken PlayerManager::_generateTokens(const string &userId) {
-    NO_EXCEPTION(
-            del({data::join({"auth", "refresh-id", get(
-                    data::join({"auth", "id-refresh", userId}, ':')
-            )}, ':')});
-    )
-    return {
-            _generateAccessToken(userId),
-            _generateRefreshToken(userId),
-            _accessExpiration,
-            _refreshExpiration
-    };
-}
-
 string PlayerManager::_generateAccessToken(const string &userId) {
     auto accessToken = crypto::blake2B(drogon::utils::getUuid());
     setPx(
             data::join({"auth", "access-id", accessToken}, ':'),
             userId,
-            _accessExpiration
+            _accessExpiration + _refreshExpiration
     );
     return accessToken;
-}
-
-string PlayerManager::_generateRefreshToken(const string &userId) {
-    auto refreshToken = crypto::keccak(drogon::utils::getUuid());
-    setPx({{
-                   data::join({"auth", "id-refresh", userId}, ':'),
-                   refreshToken,
-                   _refreshExpiration,
-           },
-           {
-                   data::join({"auth", "refresh-id", refreshToken}, ':'),
-                   userId,
-                   _refreshExpiration,
-           }});
-    return refreshToken;
 }

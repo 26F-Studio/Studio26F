@@ -3,7 +3,7 @@
 //
 
 #include <filters/AuthSeedEmail.h>
-#include <helpers/RequestJson.h>
+#include <helpers/JsonHelper.h>
 
 using namespace drogon;
 using namespace std;
@@ -17,7 +17,7 @@ void AuthSeedEmail::doFilter(
         FilterChainCallback &&nextCb
 ) {
     handleExceptions([&]() {
-        auto request = RequestJson(req);
+        auto request = JsonHelper(req);
         request.require("email", JsonValue::String);
         req->attributes()->insert("requestJson", request);
         nextCb();

@@ -19,8 +19,14 @@ namespace studio26f::api::v1 {
         Auth();
 
         METHOD_LIST_BEGIN
+            METHOD_ADD(
+                    Auth::oauth,
+                    "/oauth",
+                    drogon::Post,
+                    "studio26f::filters::CheckAccessToken",
+                    "studio26f::filters::AuthOauth"
+            );
             METHOD_ADD(Auth::check, "/check", drogon::Get, "studio26f::filters::CheckAccessToken");
-            METHOD_ADD(Auth::refresh, "/refresh", drogon::Get, "studio26f::filters::CheckRefreshToken");
             METHOD_ADD(
                     Auth::verifyEmail,
                     "/verify/email",
@@ -60,10 +66,9 @@ namespace studio26f::api::v1 {
                     "studio26f::filters::AuthDeactivateEmail");
         METHOD_LIST_END
 
-        void check(const drogon::HttpRequestPtr &req, std::function<void(const drogon::HttpResponsePtr &)> &&callback);
+        void oauth(const drogon::HttpRequestPtr &req, std::function<void(const drogon::HttpResponsePtr &)> &&callback);
 
-        void
-        refresh(const drogon::HttpRequestPtr &req, std::function<void(const drogon::HttpResponsePtr &)> &&callback);
+        void check(const drogon::HttpRequestPtr &req, std::function<void(const drogon::HttpResponsePtr &)> &&callback);
 
         void
         verifyEmail(const drogon::HttpRequestPtr &req, std::function<void(const drogon::HttpResponsePtr &)> &&callback);

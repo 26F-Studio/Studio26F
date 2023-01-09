@@ -3,7 +3,6 @@
 //
 
 #include <controllers/Player.h>
-#include <helpers/ResponseJson.h>
 
 using namespace drogon;
 using namespace std;
@@ -16,7 +15,7 @@ using namespace studio26f::types;
 Player::Player() : _playerManager(app().getPlugin<PlayerManager>()) {}
 
 void Player::getAvatar(const HttpRequestPtr &req, function<void(const HttpResponsePtr &)> &&callback) {
-    ResponseJson response;
+    JsonHelper response(k200OK, ResultCode::Completed);
     handleExceptions([&]() {
         response.setData(_playerManager->getAvatar(
                 req->attributes()->get<string>("accessToken"),
@@ -27,7 +26,7 @@ void Player::getAvatar(const HttpRequestPtr &req, function<void(const HttpRespon
 }
 
 void Player::getInfo(const HttpRequestPtr &req, function<void(const HttpResponsePtr &)> &&callback) {
-    ResponseJson response;
+    JsonHelper response(k200OK, ResultCode::Completed);
     handleExceptions([&]() {
         response.setData(_playerManager->getPlayerInfo(
                 req->attributes()->get<string>("accessToken"),
@@ -38,12 +37,19 @@ void Player::getInfo(const HttpRequestPtr &req, function<void(const HttpResponse
 }
 
 void Player::updateInfo(const HttpRequestPtr &req, function<void(const HttpResponsePtr &)> &&callback) {
-    ResponseJson response;
+    JsonHelper response(k200OK, ResultCode::Completed);
     handleExceptions([&]() {
         _playerManager->updatePlayerInfo(
                 req->attributes()->get<int64_t>("playerId"),
-                req->attributes()->get<RequestJson>("requestJson")
+                req->attributes()->get<JsonHelper>("requestJson")
         );
+        const auto accessToken = req->attributes()->get<string>("accessToken");
+        if (!accessToken.empty()) {
+            Json::Value data;
+            data["accessToken"] = accessToken;
+            response.setResultCode(ResultCode::Continued);
+            response.setData(data);
+        }
     }, response);
     response.to(callback);
 }

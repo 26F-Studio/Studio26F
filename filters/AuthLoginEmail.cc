@@ -3,7 +3,7 @@
 //
 
 #include <filters/AuthLoginEmail.h>
-#include <helpers/RequestJson.h>
+#include <helpers/JsonHelper.h>
 #include <structures/Exceptions.h>
 
 using namespace drogon;
@@ -19,7 +19,7 @@ void AuthLoginEmail::doFilter(
         FilterChainCallback &&nextCb
 ) {
     handleExceptions([&]() {
-        auto request = RequestJson(req);
+        auto request = JsonHelper(req);
         request.require("email", JsonValue::String);
         if (!(
                 request.check("code", JsonValue::String) ||

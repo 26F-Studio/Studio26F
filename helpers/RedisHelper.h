@@ -79,7 +79,7 @@ namespace studio26f::helpers {
 
         [[maybe_unused]] std::chrono::seconds ttl(const std::string &key);
 
-        [[maybe_unused]] std::chrono::milliseconds pTtl(const std::string &key);
+        std::chrono::milliseconds pTtl(const std::string &key);
 
     private:
         std::string _baseKey;

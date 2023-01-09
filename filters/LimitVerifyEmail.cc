@@ -3,8 +3,6 @@
 //
 
 #include <filters/LimitVerifyEmail.h>
-#include <helpers/RequestJson.h>
-#include <helpers/ResponseJson.h>
 #include <plugins/PlayerManager.h>
 
 using namespace drogon;
@@ -20,17 +18,17 @@ void LimitVerifyEmail::doFilter(
         FilterCallback &&failedCb,
         FilterChainCallback &&nextCb
 ) {
-    auto requestJson = req->attributes()->get<RequestJson>("requestJson");
+    auto requestJson = req->attributes()->get<JsonHelper>("requestJson");
     try {
         if (!app().getPlugin<PlayerManager>()->verifyLimit("email", requestJson["email"].asString())) {
-            ResponseJson(k429TooManyRequests, ResultCode::TooFrequent)
+            JsonHelper(k429TooManyRequests, ResultCode::TooFrequent)
                     .setMessage(i18n("tooFrequent"))
                     .to(failedCb);
             return;
         }
     } catch (const exception &e) {
         LOG_ERROR << e.what();
-        ResponseJson(k500InternalServerError, ResultCode::InternalError)
+        JsonHelper(k500InternalServerError, ResultCode::InternalError)
                 .setMessage(i18n("internalError"))
                 .to(failedCb);
         return;

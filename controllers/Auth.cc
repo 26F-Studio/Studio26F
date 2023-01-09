@@ -3,10 +3,8 @@
 //
 
 #include <controllers/Auth.h>
-#include <helpers/RequestJson.h>
-#include <helpers/ResponseJson.h>
 #include <magic_enum.hpp>
-#include <types/Applications.h>
+#include <types/Products.h>
 
 using namespace drogon;
 using namespace magic_enum;
@@ -19,48 +17,67 @@ using namespace studio26f::types;
 
 Auth::Auth() : _playerManager(app().getPlugin<PlayerManager>()) {}
 
-void Auth::check(const HttpRequestPtr &req, function<void(const HttpResponsePtr &)> &&callback) {
-    ResponseJson response;
+void Auth::oauth(const HttpRequestPtr &req, function<void(const HttpResponsePtr &)> &&callback) {
+    JsonHelper response(k200OK, ResultCode::Completed);
     handleExceptions([&]() {
-        response.setData(req->attributes()->get<int64_t>("playerId"));
+        auto request = req->attributes()->get<JsonHelper>("requestJson");
+        const auto accessToken = req->attributes()->get<string>("accessToken");
+        _playerManager->oauth(
+                accessToken.empty() ? req->getHeader("x-access-token") : accessToken,
+                req->attributes()->get<int64_t>("playerId"),
+                request["product"].asString(),
+                request["recaptcha"].asString(),
+                req->getPeerAddr()
+        );
+        if (!accessToken.empty()) {
+            Json::Value data;
+            data["accessToken"] = accessToken;
+            response.setResultCode(ResultCode::Continued);
+            response.setData(data);
+        }
     }, response);
     response.to(callback);
 }
 
-void Auth::refresh(const HttpRequestPtr &req, function<void(const HttpResponsePtr &)> &&callback) {
-    ResponseJson response;
+void Auth::check(const HttpRequestPtr &req, function<void(const HttpResponsePtr &)> &&callback) {
+    JsonHelper response(k200OK, ResultCode::Completed);
     handleExceptions([&]() {
-        response.setData(_playerManager->refresh(
-                req->attributes()->get<string>("refreshToken")
-        ).parse());
+        Json::Value data;
+        data["playerId"] = req->attributes()->get<int64_t>("playerId");
+        const auto accessToken = req->attributes()->get<string>("accessToken");
+        if (!accessToken.empty()) {
+            data["accessToken"] = accessToken;
+            response.setResultCode(ResultCode::Continued);
+        }
+        response.setData(data);
     }, response);
     response.to(callback);
 }
 
 void Auth::verifyEmail(const HttpRequestPtr &req, function<void(const HttpResponsePtr &)> &&callback) {
-    ResponseJson response;
+    JsonHelper response(k200OK, ResultCode::Completed);
     handleExceptions([&]() {
         _playerManager->verifyEmail(
-                req->attributes()->get<RequestJson>("requestJson")["email"].asString()
+                req->attributes()->get<JsonHelper>("requestJson")["email"].asString()
         );
     }, response);
     response.to(callback);
 }
 
 void Auth::seedEmail(const HttpRequestPtr &req, function<void(const HttpResponsePtr &)> &&callback) {
-    ResponseJson response;
+    JsonHelper response(k200OK, ResultCode::Completed);
     handleExceptions([&]() {
         response.setData(_playerManager->seedEmail(
-                req->attributes()->get<RequestJson>("requestJson")["email"].asString()
+                req->attributes()->get<JsonHelper>("requestJson")["email"].asString()
         ));
     }, response);
     response.to(callback);
 }
 
 void Auth::loginEmail(const HttpRequestPtr &req, function<void(const HttpResponsePtr &)> &&callback) {
-    ResponseJson response;
+    JsonHelper response(k200OK, ResultCode::Completed);
     handleExceptions([&]() {
-        auto request = req->attributes()->get<RequestJson>("requestJson");
+        auto request = req->attributes()->get<JsonHelper>("requestJson");
         if (request.check("code", JsonValue::String)) {
             const auto &[tokens, isNew] = _playerManager->loginEmailCode(
                     request["email"].asString(),
@@ -69,22 +86,22 @@ void Auth::loginEmail(const HttpRequestPtr &req, function<void(const HttpRespons
             if (isNew) {
                 response.setResultCode(ResultCode::Continued);
             }
-            response.setData(tokens.parse());
+            response.setData(tokens);
         } else {
             const auto &tokens = _playerManager->loginEmailPassword(
                     request["email"].asString(),
                     request["password"].asString()
             );
-            response.setData(tokens.parse());
+            response.setData(tokens);
         }
     }, response);
     response.to(callback);
 }
 
 void Auth::resetEmail(const HttpRequestPtr &req, function<void(const HttpResponsePtr &)> &&callback) {
-    ResponseJson response;
+    JsonHelper response(k200OK, ResultCode::Completed);
     handleExceptions([&]() {
-        auto request = req->attributes()->get<RequestJson>("requestJson");
+        auto request = req->attributes()->get<JsonHelper>("requestJson");
         _playerManager->resetEmail(
                 request["email"].asString(),
                 request["code"].asString(),
@@ -95,22 +112,29 @@ void Auth::resetEmail(const HttpRequestPtr &req, function<void(const HttpRespons
 }
 
 void Auth::migrateEmail(const HttpRequestPtr &req, function<void(const HttpResponsePtr &)> &&callback) {
-    ResponseJson response;
+    JsonHelper response(k200OK, ResultCode::Completed);
     handleExceptions([&]() {
-        auto request = req->attributes()->get<RequestJson>("requestJson");
+        auto request = req->attributes()->get<JsonHelper>("requestJson");
         _playerManager->migrateEmail(
                 req->attributes()->get<int64_t>("playerId"),
                 request["newEmail"].asString(),
                 request["code"].asString()
         );
+        const auto accessToken = req->attributes()->get<string>("accessToken");
+        if (!accessToken.empty()) {
+            Json::Value data;
+            data["accessToken"] = accessToken;
+            response.setResultCode(ResultCode::Continued);
+            response.setData(data);
+        }
     }, response);
     response.to(callback);
 }
 
 void Auth::deactivateEmail(const HttpRequestPtr &req, function<void(const HttpResponsePtr &)> &&callback) {
-    ResponseJson response;
+    JsonHelper response(k200OK, ResultCode::Completed);
     handleExceptions([&]() {
-        auto request = req->attributes()->get<RequestJson>("requestJson");
+        auto request = req->attributes()->get<JsonHelper>("requestJson");
         _playerManager->deactivateEmail(
                 req->attributes()->get<int64_t>("playerId"),
                 request["code"].asString()

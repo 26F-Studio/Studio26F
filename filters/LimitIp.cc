@@ -3,7 +3,6 @@
 //
 
 #include <filters/LimitIp.h>
-#include <helpers/ResponseJson.h>
 #include <plugins/PlayerManager.h>
 
 using namespace drogon;
@@ -21,14 +20,14 @@ void LimitIp::doFilter(
 ) {
     try {
         if (!app().getPlugin<PlayerManager>()->ipLimit(req->getPeerAddr().toIp())) {
-            ResponseJson(k429TooManyRequests, ResultCode::TooFrequent)
+            JsonHelper(k429TooManyRequests, ResultCode::TooFrequent)
                     .setMessage(i18n("tooFrequent"))
                     .to(failedCb);
             return;
         }
     } catch (const exception &e) {
         LOG_ERROR << e.what();
-        ResponseJson(k500InternalServerError, ResultCode::InternalError)
+        JsonHelper(k500InternalServerError, ResultCode::InternalError)
                 .setMessage(i18n("internalError"))
                 .to(failedCb);
         return;

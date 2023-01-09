@@ -3,7 +3,7 @@
 //
 
 #include <filters/PlayerUpdateInfo.h>
-#include <helpers/RequestJson.h>
+#include <helpers/JsonHelper.h>
 
 using namespace drogon;
 using namespace std;
@@ -17,7 +17,7 @@ void PlayerUpdateInfo::doFilter(
         FilterChainCallback &&nextCb
 ) {
     handleExceptions([&]() {
-        auto request = RequestJson(req);
+        auto request = JsonHelper(req);
         request.remove("id");
         request.remove("avatar_hash");
         request.remove("permission");

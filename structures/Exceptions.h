@@ -5,9 +5,7 @@
 #pragma once
 
 #include <drogon/drogon.h>
-#include <helpers/MessageJson.h>
-#include <helpers/RequestJson.h>
-#include <helpers/ResponseJson.h>
+#include <helpers/JsonHelper.h>
 #include <types/JsonValue.h>
 #include <types/ErrorNumber.h>
 #include <types/ResultCode.h>
@@ -42,7 +40,7 @@ namespace studio26f::structures {
                 drogon::HttpStatusCode statusCode = drogon::HttpStatusCode::k500InternalServerError
         );
 
-        [[nodiscard]] helpers::ResponseJson toJson() const noexcept;
+        [[nodiscard]] helpers::JsonHelper toJson() const noexcept;
 
     private:
         const std::string _reason;
@@ -63,7 +61,7 @@ namespace studio26f::structures {
                 bool error = false
         );
 
-        [[nodiscard]] helpers::MessageJson toJson() const noexcept;
+        [[nodiscard]] helpers::JsonHelper toJson() const noexcept;
 
     private:
         const std::string _reason;

@@ -3,7 +3,7 @@
 //
 
 #include <filters/NoticeUpdate.h>
-#include <helpers/RequestJson.h>
+#include <helpers/JsonHelper.h>
 
 using namespace drogon;
 using namespace std;
@@ -17,7 +17,7 @@ void NoticeUpdate::doFilter(
         FilterChainCallback &&nextCb
 ) {
     handleExceptions([&]() {
-        auto request = RequestJson(req);
+        auto request = JsonHelper(req);
         request.remove("id");
         request.remove("create_time");
         request.trim("en_us", JsonValue::String);

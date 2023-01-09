@@ -5,36 +5,18 @@
 #pragma once
 
 #include <drogon/plugins/Plugin.h>
-#include <helpers/I18nHelper.h>
 #include <helpers/RedisHelper.h>
-#include <helpers/RequestJson.h>
-#include <helpers/ResponseJson.h>
 #include <models/Player.h>
+#include <structures/ExceptionHandlers.h>
+#include <types/Products.h>
 
 namespace studio26f::plugins {
     class PlayerManager :
             public drogon::Plugin<PlayerManager>,
-            public helpers::I18nHelper<PlayerManager>,
+            public structures::HttpRequestHandler<PlayerManager>,
             public helpers::RedisHelper {
     public:
         static constexpr char projectName[] = CMAKE_PROJECT_NAME;
-
-        class RedisToken {
-        public:
-            RedisToken(
-                    std::string access,
-                    std::string refresh,
-                    std::chrono::milliseconds accessTokenExpire,
-                    std::chrono::milliseconds refreshTokenExpire
-            );
-
-            RedisToken(RedisToken &&redisToken) noexcept;
-
-            [[nodiscard]] Json::Value parse() const;
-
-            const std::string accessToken, refreshToken;
-            const std::chrono::milliseconds accessTokenExpire, refreshTokenExpire;
-        };
 
     public:
         PlayerManager();
@@ -43,17 +25,25 @@ namespace studio26f::plugins {
 
         void shutdown() override;
 
+        void oauth(
+                const std::string &accessToken,
+                int64_t playerId,
+                const std::string &product,
+                const std::string &recaptcha,
+                trantor::InetAddress address
+        );
+
         int64_t getPlayerIdByAccessToken(const std::string &accessToken);
 
-        RedisToken refresh(const std::string &refreshToken);
+        bool tryRefresh(std::string &accessToken);
 
         void verifyEmail(const std::string &email);
 
         std::string seedEmail(const std::string &email);
 
-        std::tuple<RedisToken, bool> loginEmailCode(const std::string &email,const std::string &code);
+        std::tuple<std::string, bool> loginEmailCode(const std::string &email, const std::string &code);
 
-        RedisToken loginEmailPassword(const std::string &email,const std::string &password);
+        std::string loginEmailPassword(const std::string &email, const std::string &password);
 
         void resetEmail(
                 const std::string &email,
@@ -67,25 +57,13 @@ namespace studio26f::plugins {
                 const std::string &code
         );
 
-        void deactivateEmail(
-                int64_t playerId,
-                const std::string &code
-        );
+        void deactivateEmail(int64_t playerId, const std::string &code);
 
-        std::string getAvatar(
-                const std::string &accessToken,
-                int64_t playerId
-        );
+        std::string getAvatar(const std::string &accessToken, int64_t playerId);
 
-        Json::Value getPlayerInfo(
-                const std::string &accessToken,
-                int64_t playerId
-        );
+        Json::Value getPlayerInfo(const std::string &accessToken, int64_t playerId);
 
-        void updatePlayerInfo(
-                int64_t playerId,
-                helpers::RequestJson request
-        );
+        void updatePlayerInfo(int64_t playerId, helpers::JsonHelper request);
 
         bool ipLimit(const std::string &ip);
 
@@ -94,9 +72,12 @@ namespace studio26f::plugins {
         bool verifyLimit(const std::string &type, const std::string &key);
 
     private:
+        std::string _recaptchaSecret;
         std::chrono::seconds _ipInterval{}, _loginInterval{}, _verifyInterval{},
                 _accessExpiration{}, _refreshExpiration{}, _emailExpiration{};
         uint64_t _ipMaxCount{}, _verifyMaxCount{}, _loginMaxCount{};
+
+        std::unordered_map<types::Products, std::string> _productAddressMap;
 
         drogon::orm::Mapper<drogon_model::studio26f::Player> _playerMapper;
 
@@ -104,10 +85,6 @@ namespace studio26f::plugins {
 
         void _setEmailCode(const std::string &email, const std::string &code);
 
-        RedisToken _generateTokens(const std::string &userId);
-
         std::string _generateAccessToken(const std::string &userId);
-
-        std::string _generateRefreshToken(const std::string &userId);
     };
 }

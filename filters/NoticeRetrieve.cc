@@ -3,8 +3,7 @@
 //
 
 #include <filters/NoticeRetrieve.h>
-#include <helpers/ResponseJson.h>
-#include <types/ResultCode.h>
+#include <helpers/JsonHelper.h>
 
 using namespace drogon;
 using namespace std;
@@ -23,7 +22,7 @@ void NoticeRetrieve::doFilter(
     const auto language = req->getParameter("language");
 
     if (language.empty()) {
-        ResponseJson(k400BadRequest, ResultCode::InvalidArguments)
+        JsonHelper(k400BadRequest, ResultCode::InvalidArguments)
                 .setMessage(i18n("invalidArguments"))
                 .to(failedCb);
         return;
@@ -32,7 +31,7 @@ void NoticeRetrieve::doFilter(
 
     if (lastCount.empty()) {
         if (pageIndex.empty() || pageSize.empty()) {
-            ResponseJson(k400BadRequest, ResultCode::InvalidArguments)
+            JsonHelper(k400BadRequest, ResultCode::InvalidArguments)
                     .setMessage(i18n("invalidArguments"))
                     .to(failedCb);
             return;

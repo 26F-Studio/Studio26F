@@ -14,18 +14,18 @@ void Configurator::initAndStart(const Json::Value &config) {
         app().registerSyncAdvice([](const HttpRequestPtr &req) -> HttpResponsePtr {
             if (req->method() == Options) {
                 auto resp = HttpResponse::newHttpResponse();
-                resp->addHeader("Access-Control-Allow-Origin", "*");
+                resp->addHeader("Access-Control-Allow-Origin", req->getHeader("Origin"));
                 resp->addHeader("Access-Control-Allow-Headers", req->getHeader("Access-Control-Request-Headers"));
                 resp->addHeader("Access-Control-Allow-Methods", req->getHeader("Access-Control-Request-Method"));
                 return resp;
             }
             return nullptr;
         });
-        app().registerPostHandlingAdvice(
-                [](const HttpRequestPtr &req, const HttpResponsePtr &resp) {
+        app().registerHttpResponseCreationAdvice(
+                [](const HttpResponsePtr &resp) {
                     resp->addHeader("Access-Control-Allow-Origin", "*");
-                    resp->addHeader("Access-Control-Allow-Headers", req->getHeader("Access-Control-Request-Headers"));
-                    resp->addHeader("Access-Control-Allow-Methods", req->getHeader("Access-Control-Request-Method"));
+                    resp->addHeader("Access-Control-Allow-Headers", "*");
+                    resp->addHeader("Access-Control-Allow-Methods", "*");
                 }
         );
     }

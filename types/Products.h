@@ -7,9 +7,9 @@
 #include <drogon/drogon.h>
 
 namespace studio26f::types {
-    enum class Applications {
-        Api,
-        Techrater,
-        Techluster,
+    enum class Products {
+        quatrack,
+        techmino,
+        techminoGalaxy,
     };
 }

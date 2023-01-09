@@ -2,7 +2,6 @@
 // Created by particleg on 2021/10/2.
 //
 
-#include <helpers/ResponseJson.h>
 #include <magic_enum.hpp>
 #include <structures/Exceptions.h>
 
@@ -31,8 +30,8 @@ ResponseException::ResponseException(
         HttpStatusCode statusCode
 ) : BaseException(std::move(message)), _reason(e.what()), _resultCode(resultCode), _statusCode(statusCode) {}
 
-ResponseJson ResponseException::toJson() const noexcept {
-    return ResponseJson(_statusCode, _resultCode)
+JsonHelper ResponseException::toJson() const noexcept {
+    return JsonHelper(_statusCode, _resultCode)
             .setMessage(_message)
             .setReason(_reason);
 }
@@ -48,8 +47,8 @@ MessageException::MessageException(
         bool error
 ) : BaseException(std::move(message)), _reason(e.what()), _error(error) {}
 
-MessageJson MessageException::toJson() const noexcept {
-    return MessageJson(_error ? ErrorNumber::Error : ErrorNumber::Failed)
+JsonHelper MessageException::toJson() const noexcept {
+    return JsonHelper(_error ? ErrorNumber::Error : ErrorNumber::Failed)
             .setMessage(_message)
             .setReason(_reason);
 }

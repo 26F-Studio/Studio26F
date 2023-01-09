@@ -24,7 +24,7 @@ elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
     add_compile_definitions(_CRT_SECURE_NO_WARNINGS NOMINMAX)
 endif ()
 
-add_executable(${PROJECT_NAME} main.cc types/Applications.h)
+add_executable(${PROJECT_NAME} main.cc types/Products.h)
 
 find_package(cryptopp CONFIG REQUIRED)
 find_package(Drogon CONFIG REQUIRED)
