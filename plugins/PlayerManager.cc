@@ -33,9 +33,9 @@ PlayerManager::PlayerManager() : RedisHelper(CMAKE_PROJECT_NAME), _playerMapper(
 
 void PlayerManager::initAndStart(const Json::Value &config) {
     if (!(
-            config["expirations"]["access"].isInt() &&
-            config["expirations"]["refresh"].isInt() &&
-            config["expirations"]["email"].isInt()
+            config["expirations"]["access"].isUInt64() &&
+            config["expirations"]["refresh"].isUInt64() &&
+            config["expirations"]["email"].isUInt64()
     )) {
         LOG_ERROR << R"("Invalid expiration config")";
         abort();
@@ -64,17 +64,29 @@ void PlayerManager::initAndStart(const Json::Value &config) {
 
     if (!(
             config["oauth"]["secret"].isString() &&
-            config["oauth"]["hosts"]["quatrack"].isString() &&
-            config["oauth"]["hosts"]["techmino"].isString() &&
-            config["oauth"]["hosts"]["techminoGalaxy"].isString()
+            config["oauth"]["products"]["quatrack"]["host"].isString() &&
+            config["oauth"]["products"]["quatrack"]["path"].isString() &&
+            config["oauth"]["products"]["techmino"]["host"].isString() &&
+            config["oauth"]["products"]["techmino"]["path"].isString() &&
+            config["oauth"]["products"]["techminoGalaxy"]["host"].isString() &&
+            config["oauth"]["products"]["techminoGalaxy"]["path"].isString()
     )) {
         LOG_ERROR << R"(Invalid recaptcha config)";
         abort();
     }
     _recaptchaSecret = config["oauth"]["secret"].asString();
-    _productAddressMap[Products::quatrack] = config["oauth"]["hosts"]["quatrack"].asString();
-    _productAddressMap[Products::techmino] = config["oauth"]["hosts"]["techmino"].asString();
-    _productAddressMap[Products::techminoGalaxy] = config["oauth"]["hosts"]["techminoGalaxy"].asString();
+    _productAddressMap[Products::quatrack] = {
+            config["oauth"]["products"]["quatrack"]["host"].asString(),
+            config["oauth"]["products"]["quatrack"]["path"].asString()
+    };
+    _productAddressMap[Products::techmino] = {
+            config["oauth"]["products"]["techmino"]["host"].asString(),
+            config["oauth"]["products"]["techmino"]["path"].asString()
+    };
+    _productAddressMap[Products::techminoGalaxy] = {
+            config["oauth"]["products"]["techminoGalaxy"]["host"].asString(),
+            config["oauth"]["products"]["techminoGalaxy"]["path"].asString()
+    };
     LOG_INFO << "PlayerManager loaded.";
 }
 
@@ -82,10 +94,11 @@ void PlayerManager::shutdown() {
     LOG_INFO << "PlayerManager shutdown.";
 }
 
-void PlayerManager::oauth(
-        const string &product,
+string PlayerManager::oauth(
         const string &recaptcha,
-        trantor::InetAddress address
+        const trantor::InetAddress &address,
+        const string &product,
+        int64_t playerId
 ) {
     const auto productOptional = enum_cast<Products>(product);
     if (!productOptional.has_value()) {
@@ -126,6 +139,38 @@ void PlayerManager::oauth(
                     k406NotAcceptable
             );
         }
+    }
+    {
+        const auto [host, path] = _productAddressMap[productOptional.value()];
+        setClient(host);
+        Json::Value body;
+        body["playerId"] = playerId;
+        const auto response = request(
+                Post,
+                path,
+                {},
+                {
+                        {"code", JsonValue::UInt64}
+                },
+                {},
+                body,
+                false
+        );
+        if (response.notEqual("code", enum_integer(ResultCode::Completed))) {
+            throw ResponseException(
+                    response["message"].isString() ? response["message"].asString() : i18n("invalidArguments"),
+                    enum_cast<ResultCode>(response["code"].asUInt64()).value_or(ResultCode::Unknown),
+                    k403Forbidden
+            );
+        }
+        if (response.check("data", JsonValue::String)) {
+            throw ResponseException(
+                    i18n("networkError"),
+                    ResultCode::NetworkError,
+                    drogon::k503ServiceUnavailable
+            );
+        }
+        return response["data"].asString();
     }
 }
 
@@ -456,11 +501,11 @@ void PlayerManager::_setEmailCode(const string &email, const string &code) {
     );
 }
 
-string PlayerManager::_generateAccessToken(const string &userId) {
+string PlayerManager::_generateAccessToken(const string &playerId) {
     auto accessToken = crypto::blake2B(drogon::utils::getUuid());
     setPx(
             data::join({"auth", "access-id", accessToken}, ':'),
-            userId,
+            playerId,
             _accessExpiration + _refreshExpiration
     );
     return accessToken;

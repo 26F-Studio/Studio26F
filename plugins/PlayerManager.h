@@ -25,10 +25,11 @@ namespace studio26f::plugins {
 
         void shutdown() override;
 
-        void oauth(
-                const std::string &product,
+        std::string oauth(
                 const std::string &recaptcha,
-                trantor::InetAddress address
+                const trantor::InetAddress &address,
+                const std::string &product,
+                int64_t playerId
         );
 
         int64_t getPlayerIdByAccessToken(const std::string &accessToken);
@@ -75,7 +76,7 @@ namespace studio26f::plugins {
                 _accessExpiration{}, _refreshExpiration{}, _emailExpiration{};
         uint64_t _ipMaxCount{}, _verifyMaxCount{}, _loginMaxCount{};
 
-        std::unordered_map<types::Products, std::string> _productAddressMap;
+        std::unordered_map<types::Products, std::pair<std::string, std::string>> _productAddressMap;
 
         drogon::orm::Mapper<drogon_model::studio26f::Player> _playerMapper;
 
@@ -83,6 +84,6 @@ namespace studio26f::plugins {
 
         void _setEmailCode(const std::string &email, const std::string &code);
 
-        std::string _generateAccessToken(const std::string &userId);
+        std::string _generateAccessToken(const std::string &playerId);
     };
 }
