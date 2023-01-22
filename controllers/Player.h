@@ -37,6 +37,7 @@ namespace studio26f::api::v1 {
                     Player::updateInfo,
                     "/info",
                     drogon::Put,
+                    "studio26f::filters::CheckSecure",
                     "studio26f::filters::CheckAccessToken",
                     "studio26f::filters::PlayerUpdateInfo"
             );

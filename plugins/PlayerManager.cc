@@ -123,7 +123,7 @@ string PlayerManager::oauth(
                 }
         );
         if (response["score"].isDouble() &&
-            response["score"].asDouble() < 0.3) {
+            response["score"].asDouble() < 0.7) {
             throw ResponseException(
                     i18n("areYouARobot"),
                     internal::BaseException(to_string(response["score"].asDouble())),
@@ -163,7 +163,7 @@ string PlayerManager::oauth(
                     k403Forbidden
             );
         }
-        if (response.check("data", JsonValue::String)) {
+        if (!response.check("data", JsonValue::String)) {
             throw ResponseException(
                     i18n("networkError"),
                     ResultCode::NetworkError,
@@ -188,21 +188,23 @@ int64_t PlayerManager::getPlayerIdByAccessToken(const string &accessToken) {
 }
 
 bool PlayerManager::tryRefresh(string &accessToken) {
-    try {
-        const auto ttl = chrono::milliseconds(pTtl(data::join({"auth", "access-id", accessToken}, ':')));
-        if (ttl < _refreshExpiration) {
-            accessToken = _generateAccessToken(to_string(getPlayerIdByAccessToken(accessToken)));
-            return true;
-        }
-        return false;
-    } catch (const redis_exception::KeyNotFound &e) {
+    const auto ttl = chrono::milliseconds(pTtl(data::join({"auth", "access-id", accessToken}, ':')));
+    if (ttl.count() == -2) {
         throw ResponseException(
                 i18n("invalidAccessToken"),
-                e,
                 ResultCode::NotAcceptable,
                 k401Unauthorized
         );
     }
+    if (ttl < _refreshExpiration) {
+        const auto playerId = getPlayerIdByAccessToken(accessToken);
+        NO_EXCEPTION(
+                del(data::join({"auth", "access-id", accessToken}, ':'));
+        )
+        accessToken = _generateAccessToken(to_string(playerId));
+        return true;
+    }
+    return false;
 }
 
 void PlayerManager::verifyEmail(const string &email) {
@@ -215,6 +217,7 @@ void PlayerManager::verifyEmail(const string &email) {
             "{{VERIFY_CODE}}",
             code
     );
+    mailContent = regex_replace(mailContent, regex{R"((\s*[\r\n]+\s*|\s+))"}, " ");
     const auto [result, receivedMessage] = app().getPlugin<EmailManager>()->smtp(
             email,
             "[26F Studio] Verification Code/验证码",
@@ -431,7 +434,6 @@ Json::Value PlayerManager::getPlayerInfo(const string &accessToken, int64_t play
         }
         return player;
     } catch (const orm::UnexpectedRows &) {
-        LOG_DEBUG << "playerNotFound: " << targetId;
         throw ResponseException(
                 i18n("playerNotFound"),
                 ResultCode::NotFound,

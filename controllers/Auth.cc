@@ -21,8 +21,8 @@ void Auth::oauth(const HttpRequestPtr &req, function<void(const HttpResponsePtr 
     JsonHelper response(k200OK, ResultCode::Completed);
     handleExceptions([&]() {
         auto request = req->attributes()->get<JsonHelper>("requestJson");
-        Json::Value body;
-        body["oauthToken"] = _playerManager->oauth(
+        Json::Value data;
+        data["oauthToken"] = _playerManager->oauth(
                 request["recaptcha"].asString(),
                 req->getPeerAddr(),
                 request["product"].asString(),
@@ -30,11 +30,10 @@ void Auth::oauth(const HttpRequestPtr &req, function<void(const HttpResponsePtr 
         );
         const auto accessToken = req->attributes()->get<string>("accessToken");
         if (!accessToken.empty()) {
-            Json::Value data;
             data["accessToken"] = accessToken;
             response.setResultCode(ResultCode::Continued);
-            response.setData(data);
         }
+        response.setData(data);
     }, response);
     response.to(callback);
 }
@@ -79,20 +78,23 @@ void Auth::loginEmail(const HttpRequestPtr &req, function<void(const HttpRespons
     handleExceptions([&]() {
         auto request = req->attributes()->get<JsonHelper>("requestJson");
         if (request.check("code", JsonValue::String)) {
-            const auto &[tokens, isNew] = _playerManager->loginEmailCode(
+            const auto &[accessToken, isNew] = _playerManager->loginEmailCode(
                     request["email"].asString(),
                     request["code"].asString()
             );
             if (isNew) {
                 response.setResultCode(ResultCode::Continued);
             }
-            response.setData(tokens);
+            Json::Value data;
+            data["accessToken"] = accessToken;
+            response.setData(data);
         } else {
-            const auto &tokens = _playerManager->loginEmailPassword(
+            Json::Value data;
+            data["accessToken"] = _playerManager->loginEmailPassword(
                     request["email"].asString(),
                     request["password"].asString()
             );
-            response.setData(tokens);
+            response.setData(data);
         }
     }, response);
     response.to(callback);

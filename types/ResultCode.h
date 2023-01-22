@@ -24,6 +24,7 @@ namespace studio26f::types {
         NullValue = 405,
         NotAcceptable = 406,
         Conflict = 409,
+        Insecure = 418,
         TooFrequent = 429,
 
         // Error codes (500 ~ 599)

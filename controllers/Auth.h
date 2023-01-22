@@ -23,6 +23,7 @@ namespace studio26f::api::v1 {
                     Auth::oauth,
                     "/oauth",
                     drogon::Post,
+                    "studio26f::filters::CheckSecure",
                     "studio26f::filters::CheckAccessToken",
                     "studio26f::filters::AuthOauth"
             );
@@ -31,15 +32,23 @@ namespace studio26f::api::v1 {
                     Auth::verifyEmail,
                     "/verify/email",
                     drogon::Post,
+                    "studio26f::filters::CheckSecure",
                     "studio26f::filters::AuthVerifyEmail",
                     "studio26f::filters::LimitVerifyEmail",
                     "studio26f::filters::LimitIp"
             );
-            METHOD_ADD(Auth::seedEmail, "/seed/email", drogon::Post, "studio26f::filters::AuthSeedEmail");
+            METHOD_ADD(
+                    Auth::seedEmail,
+                    "/seed/email",
+                    drogon::Post,
+                    "studio26f::filters::CheckSecure",
+                    "studio26f::filters::AuthSeedEmail"
+                    );
             METHOD_ADD(
                     Auth::loginEmail,
                     "/login/email",
                     drogon::Post,
+                    "studio26f::filters::CheckSecure",
                     "studio26f::filters::AuthLoginEmail",
                     "studio26f::filters::LimitLoginEmail",
                     "studio26f::filters::LimitIp"
@@ -48,6 +57,7 @@ namespace studio26f::api::v1 {
                     Auth::resetEmail,
                     "/reset/email",
                     drogon::Put,
+                    "studio26f::filters::CheckSecure",
                     "studio26f::filters::AuthResetEmail",
                     "studio26f::filters::LimitLoginEmail",
                     "studio26f::filters::LimitIp"
@@ -56,12 +66,14 @@ namespace studio26f::api::v1 {
                     Auth::migrateEmail,
                     "/migrate/email",
                     drogon::Put,
+                    "studio26f::filters::CheckSecure",
                     "studio26f::filters::CheckAccessToken",
                     "studio26f::filters::AuthMigrateEmail");
             METHOD_ADD(
                     Auth::deactivateEmail,
                     "/deactivate/email",
                     drogon::Post,
+                    "studio26f::filters::CheckSecure",
                     "studio26f::filters::CheckAccessToken",
                     "studio26f::filters::AuthDeactivateEmail");
         METHOD_LIST_END

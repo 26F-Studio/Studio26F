@@ -5,6 +5,7 @@
 #include <drogon/HttpAppFramework.h>
 #include <magic_enum.hpp>
 #include <plugins/EmailManager.h>
+#include <regex>
 #include <structures/Exceptions.h>
 
 using namespace drogon;
