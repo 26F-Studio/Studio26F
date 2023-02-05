@@ -5,52 +5,14 @@
 #pragma once
 
 #include <drogon/plugins/Plugin.h>
-#include <trantor/net/TcpClient.h>
+#include <helpers/I18nHelper.h>
 
 namespace studio26f::plugins {
-    class EmailManager : public drogon::Plugin<EmailManager> {
-    private:
-        enum class EmailState {
-            Init,
-            HandShake,
-            Tls [[maybe_unused]],
-            Auth,
-            User,
-            Pass,
-            Mail,
-            Recipient,
-            Data,
-            Body,
-            Quit,
-            Close
-        };
-
-        struct Email {
-            const std::string _account,
-                    _password,
-                    _senderEmail,
-                    _senderName,
-                    _receiverEmail,
-                    _subject,
-                    _content;
-            std::atomic<bool> isHTML{false};
-            std::atomic<EmailState> state{EmailState::Init};
-            std::shared_ptr<trantor::TcpClient> _socket;
-
-            Email(
-                    std::string account,
-                    std::string password,
-                    std::string senderEmail,
-                    std::string senderName,
-                    std::string receiverEmail,
-                    std::string subject,
-                    std::string content,
-                    bool isHTML,
-                    std::shared_ptr<trantor::TcpClient> socket
-            );
-
-            ~Email() = default;
-        };
+    class EmailManager :
+            public drogon::Plugin<EmailManager>,
+            public helpers::I18nHelper<EmailManager> {
+    public:
+        static constexpr char projectName[] = CMAKE_PROJECT_NAME;
 
     public:
         void initAndStart(const Json::Value &config) override;
@@ -60,29 +22,12 @@ namespace studio26f::plugins {
         void smtp(
                 const std::string &receiverEmail,
                 const std::string &subject,
-                const std::string &content,
-                bool isHTML,
-                const std::function<void(bool, const std::string &)> &callback
-        ) noexcept;
-
-        std::pair<bool, std::string> smtp(
-                const std::string &receiverEmail,
-                const std::string &subject,
-                const std::string &content,
-                bool isHTML
+                const std::string &content
         );
 
     private:
         std::string _server;
         uint32_t _port;
         std::string _account, _password, _senderEmail, _senderName;
-        std::unordered_map<std::string, std::shared_ptr<Email>> _emailMap;
-
-        static void messageHandler(
-                const trantor::TcpConnectionPtr &connPtr,
-                trantor::MsgBuffer *msgBuffer,
-                const std::shared_ptr<Email> &email,
-                const std::function<void(bool result, const std::string &)> &callback
-        );
     };
 }

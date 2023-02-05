@@ -29,6 +29,7 @@ add_executable(${PROJECT_NAME} main.cc types/Products.h)
 find_package(cryptopp CONFIG REQUIRED)
 find_package(Drogon CONFIG REQUIRED)
 find_package(magic_enum CONFIG REQUIRED)
+find_package(mailio CONFIG REQUIRED)
 find_package(range-v3 CONFIG REQUIRED)
 
 target_link_libraries(${PROJECT_NAME}
@@ -36,6 +37,7 @@ target_link_libraries(${PROJECT_NAME}
         cryptopp::cryptopp
         Drogon::Drogon
         magic_enum::magic_enum
+        mailio
         range-v3
         range-v3-meta
         range-v3::meta

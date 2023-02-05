@@ -218,20 +218,11 @@ void PlayerManager::verifyEmail(const string &email) {
             code
     );
     mailContent = regex_replace(mailContent, regex{R"((\s*[\r\n]+\s*|\s+))"}, " ");
-    const auto [result, receivedMessage] = app().getPlugin<EmailManager>()->smtp(
+    app().getPlugin<EmailManager>()->smtp(
             email,
             "[26F Studio] Verification Code/验证码",
-            mailContent,
-            true
+            mailContent
     );
-    if (!result) {
-        throw ResponseException(
-                i18n("emailSendError"),
-                internal::BaseException(receivedMessage),
-                ResultCode::EmailError,
-                k500InternalServerError
-        );
-    }
 }
 
 string PlayerManager::seedEmail(const string &email) {
