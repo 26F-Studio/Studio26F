@@ -24,7 +24,7 @@ jobs:
           echo "commitHash=$COMMIT_HASH" >> $GITHUB_OUTPUT
 
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     needs: get-info
     env:
       OUTPUT_FOLDER: ./build
@@ -36,9 +36,14 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: 'recursive'
+      - name: Setup CMake
+        uses: lukka/get-cmake@latest
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
       - name: CMake Configure and Build
         run: |
           ls /usr/bin/gcc*
+          /usr/bin/g++ --version
           cmake -S "${{ github.workspace }}" -B "${{ github.workspace }}/${{ env.OUTPUT_FOLDER }}"
           cmake --build "${{ github.workspace }}/${{ env.OUTPUT_FOLDER }}" --target Studio26F --config ${{ matrix.config }}
       - name: Upload Artifacts
