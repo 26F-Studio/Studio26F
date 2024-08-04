@@ -23,7 +23,7 @@ jobs:
           COMMIT_HASH=$(git rev-parse --short ${{ GITHUB.SHA }})
           echo "commitHash=$COMMIT_HASH" >> $GITHUB_OUTPUT
 
-  build:
+  build-linux:
     runs-on: ubuntu-24.04
     needs: get-info
     env:
@@ -50,8 +50,8 @@ jobs:
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: Studio26F_${{ needs.get-info.outputs.commitHash }}_${{ GITHUB.RUN_NUMBER }}_${{ matrix.config }}
-          path: "${{ env.OUTPUT_FOLDER }}"
+          name: Studio26F_${{ needs.get-info.outputs.commitHash }}_${{ GITHUB.RUN_NUMBER }}_Linux_${{ matrix.config }}
+          path: "${{ env.OUTPUT_FOLDER }}/Studio26F"
       - name: Prepare for release
         if: ${{ (startsWith(github.ref, 'refs/tags/pre') || startsWith(github.ref, 'refs/tags/v')) && matrix.config == 'release'}}
         shell: bash
@@ -66,3 +66,30 @@ jobs:
           artifacts: |
             ${{ env.RELEASE_FOLDER }}/*
           prerelease: ${{ startsWith(github.ref, 'refs/tags/pre') }}
+
+  build-windows:
+    runs-on: windows-latest
+    needs: get-info
+    env:
+      OUTPUT_FOLDER: ./build
+      RELEASE_FOLDER: ./release
+    strategy:
+      matrix:
+        config: [ Debug, Release ]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+      - name: Setup CMake
+        uses: lukka/get-cmake@latest
+      - name: Setup vcpkg
+        uses: lukka/run-vcpkg@v11
+      - name: CMake Configure and Build
+        run: |
+          cmake -S "${{ github.workspace }}" -B "${{ github.workspace }}/${{ env.OUTPUT_FOLDER }}"
+          cmake --build "${{ github.workspace }}/${{ env.OUTPUT_FOLDER }}" --target Studio26F --config ${{ matrix.config }}
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Studio26F_${{ needs.get-info.outputs.commitHash }}_${{ GITHUB.RUN_NUMBER }}_Windows_${{ matrix.config }}
+          path: "${{ env.OUTPUT_FOLDER }}"
