@@ -45,8 +45,8 @@ jobs:
           CC: gcc-14
           CXX: g++-14
         run: |
-          cmake -S "${{ github.workspace }}" -B "${{ github.workspace }}/${{ env.OUTPUT_FOLDER }}"
-          cmake --build "${{ github.workspace }}/${{ env.OUTPUT_FOLDER }}" --target Studio26F --config ${{ matrix.config }}
+          cmake -S "${{ github.workspace }}" -B "${{ github.workspace }}/${{ env.OUTPUT_FOLDER }}" -DCMAKE_BUILD_TYPE=${{ matrix.config }}
+          cmake --build "${{ github.workspace }}/${{ env.OUTPUT_FOLDER }}" --target Studio26F
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -92,4 +92,19 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Studio26F_${{ needs.get-info.outputs.commitHash }}_${{ GITHUB.RUN_NUMBER }}_Windows_${{ matrix.config }}
-          path: "${{ env.OUTPUT_FOLDER }}"
+          path: "${{ env.OUTPUT_FOLDER }}/${{ matrix.config }}"
+      - name: Prepare for release
+        if: ${{ (startsWith(github.ref, 'refs/tags/pre') || startsWith(github.ref, 'refs/tags/v')) && matrix.config == 'release'}}
+        shell: bash
+        run: |
+          mkdir -p ${{ env.RELEASE_FOLDER }}
+          cp ${{ env.OUTPUT_FOLDER }}/*.dll ${{ env.RELEASE_FOLDER }}
+          cp ${{ env.OUTPUT_FOLDER }}/*.exe ${{ env.RELEASE_FOLDER }}
+      - name: Upload release
+        if: ${{ (startsWith(github.ref, 'refs/tags/pre') || startsWith(github.ref, 'refs/tags/v')) && matrix.config == 'release'}}
+        uses: ncipollo/release-action@v1
+        with:
+          allowUpdates: true
+          artifacts: |
+            ${{ env.RELEASE_FOLDER }}/*
+          prerelease: ${{ startsWith(github.ref, 'refs/tags/pre') }}
