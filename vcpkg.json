@@ -1,27 +1,34 @@
 {
-  "name": "studio26f",
-  "version-string": "1.0.0",
-  "maintainers": [
-    "Particle_G <particle_g@outlook.com>"
-  ],
-  "description": "The new centralized backend for the block stacking game <Techmino>",
-  "homepage": "https://github.com/26F-Studio/Studio26F",
-  "documentation": "https://github.com/26F-Studio/Studio26F",
-  "license": "LGPL-3.0",
-  "dependencies": [
-    "cryptopp",
-    {
-      "name": "drogon",
-      "default-features": false,
-      "features": [
-        "ctl",
-        "orm",
-        "postgres",
-        "redis"
-      ]
-    },
-    "mailio",
-    "magic-enum",
-    "range-v3"
-  ]
+    "name": "studio26f",
+    "version-string": "1.0.0",
+    "maintainers": [
+        "Particle_G <particle_g@outlook.com>"
+    ],
+    "description": "The new centralized backend for the block stacking game <Techmino>",
+    "homepage": "https://github.com/26F-Studio/Studio26F",
+    "documentation": "https://github.com/26F-Studio/Studio26F",
+    "license": "LGPL-3.0",
+    "builtin-baseline": "fe1cde61e971d53c9687cf9a46308f8f55da19fa",
+    "dependencies": [
+        "cryptopp",
+        {
+            "name": "drogon",
+            "default-features": false,
+            "features": [
+                "ctl",
+                "orm",
+                "postgres",
+                "redis"
+            ]
+        },
+        "mailio",
+        "magic-enum",
+        "range-v3"
+    ],
+    "overrides": [
+        {
+            "name": "mailio",
+            "version": "0.21.0#2"
+        }
+    ]
 }
