@@ -38,6 +38,7 @@ jobs:
           submodules: 'recursive'
       - name: CMake Configure and Build
         run: |
+          /usr/bin/c++ --version
           cmake -S "${{ github.workspace }}" -B "${{ github.workspace }}/${{ env.OUTPUT_FOLDER }}"
           cmake --build "${{ github.workspace }}/${{ env.OUTPUT_FOLDER }}" --target Studio26F --config ${{ matrix.config }}
       - name: Upload Artifacts
