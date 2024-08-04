@@ -29,6 +29,8 @@ add_compile_definitions(VERSION_STRING="${VERSION_STRING}")
 
 add_executable(${PROJECT_NAME} main.cc types/Products.h)
 
+find_package(boost_date_time CONFIG REQUIRED)
+find_package(boost_system CONFIG REQUIRED)
 find_package(cryptopp CONFIG REQUIRED)
 find_package(Drogon CONFIG REQUIRED)
 find_package(magic_enum CONFIG REQUIRED)
@@ -37,6 +39,8 @@ find_package(range-v3 CONFIG REQUIRED)
 
 target_link_libraries(${PROJECT_NAME}
         PRIVATE
+        Boost::date_time
+        Boost::system
         cryptopp::cryptopp
         Drogon::Drogon
         magic_enum::magic_enum
