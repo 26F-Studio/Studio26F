@@ -4,8 +4,6 @@
 
 #pragma once
 
-#include <drogon/drogon.h>
-
 namespace studio26f::types {
     enum class Permission {
         Banned,

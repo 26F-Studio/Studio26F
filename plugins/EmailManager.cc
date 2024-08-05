@@ -17,14 +17,14 @@ using namespace studio26f::plugins;
 using namespace studio26f::structures;
 using namespace studio26f::types;
 
-void EmailManager::initAndStart(const Json::Value &config) {
+void EmailManager::initAndStart(const Json::Value& config) {
     if (!(
-            config["server"].isString() &&
-            config["port"].isUInt() &&
-            config["account"].isString() &&
-            config["password"].isString() &&
-            config["senderEmail"].isString() &&
-            config["senderName"].isString()
+        config["server"].isString() &&
+        config["port"].isUInt() &&
+        config["account"].isString() &&
+        config["password"].isString() &&
+        config["senderEmail"].isString() &&
+        config["senderName"].isString()
     )) {
         LOG_ERROR << R"(Invalid config)";
         abort();
@@ -44,9 +44,9 @@ void EmailManager::shutdown() {
 }
 
 void EmailManager::smtp(
-        const string &receiverEmail,
-        const string &subject,
-        const string &content
+    const string& receiverEmail,
+    const string& subject,
+    const string& content
 ) {
     try {
         message msg;
@@ -58,32 +58,32 @@ void EmailManager::smtp(
         msg.content_type(message::media_type_t::TEXT, "html", "utf-8");
         msg.content(content);
         smtps conn(_server, _port);
+        conn.ssl_options({{}, 0});
         conn.authenticate(_account, _password, smtps::auth_method_t::START_TLS);
         conn.submit(msg);
-    } catch (smtp_error &e) {
+    } catch (smtp_error& e) {
         LOG_WARN << "SMTP Error: " << e.what();
         throw ResponseException(
-                i18n("emailError"),
-                e,
-                ResultCode::EmailError,
-                k503ServiceUnavailable
+            i18n("emailError"),
+            e,
+            ResultCode::EmailError,
+            k503ServiceUnavailable
         );
-    } catch (dialog_error &e) {
+    } catch (dialog_error& e) {
         LOG_WARN << "Dialog Error: " << e.what();
         throw ResponseException(
-                i18n("emailError"),
-                e,
-                ResultCode::EmailError,
-                k503ServiceUnavailable
+            i18n("emailError"),
+            e,
+            ResultCode::EmailError,
+            k503ServiceUnavailable
         );
-    } catch (message_error &e) {
+    } catch (message_error& e) {
         LOG_WARN << "Message Error: " << e.what();
         throw ResponseException(
-                i18n("emailError"),
-                e,
-                ResultCode::EmailError,
-                k503ServiceUnavailable
+            i18n("emailError"),
+            e,
+            ResultCode::EmailError,
+            k503ServiceUnavailable
         );
     }
 }
-
