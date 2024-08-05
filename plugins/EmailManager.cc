@@ -58,7 +58,7 @@ void EmailManager::smtp(
         msg.content_type(message::media_type_t::TEXT, "html", "utf-8");
         msg.content(content);
         smtps conn(_server, _port);
-        conn.ssl_options({{}, 0});
+        conn.ssl_options({boost::asio::ssl::context::tls_client, boost::asio::ssl::verify_none});
         conn.authenticate(_account, _password, smtps::auth_method_t::START_TLS);
         conn.submit(msg);
     } catch (smtp_error& e) {
