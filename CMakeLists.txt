@@ -27,7 +27,7 @@ endif ()
 add_compile_definitions(CMAKE_PROJECT_NAME="${PROJECT_NAME}")
 add_compile_definitions(VERSION_STRING="${VERSION_STRING}")
 
-add_executable(${PROJECT_NAME} main.cc types/Products.h)
+add_executable(${PROJECT_NAME} main.cc)
 
 find_package(boost_date_time CONFIG REQUIRED)
 find_package(boost_system CONFIG REQUIRED)
@@ -78,11 +78,3 @@ target_sources(${PROJECT_NAME}
         ${UTIL_SRC})
 
 add_subdirectory(test)
-
-install(FILES
-        ${CMAKE_CURRENT_SOURCE_DIR}/config.json
-        ${CMAKE_CURRENT_SOURCE_DIR}/the26f_org.key
-        ${CMAKE_CURRENT_SOURCE_DIR}/the26f_org_integrated.crt
-        ${CMAKE_CURRENT_SOURCE_DIR}/verifyEmail.html
-        DESTINATION
-        ${CMAKE_BINARY_DIR})
