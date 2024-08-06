@@ -21,54 +21,54 @@ namespace studio26f::plugins {
     public:
         PlayerManager();
 
-        void initAndStart(const Json::Value &config) override;
+        void initAndStart(const Json::Value& config) override;
 
         void shutdown() override;
 
         std::string oauth(
-                const std::string &recaptcha,
-                const trantor::InetAddress &address,
-                const std::string &product,
-                int64_t playerId
+            const std::string& recaptcha,
+            const trantor::InetAddress& address,
+            const std::string& product,
+            int64_t playerId
         );
 
-        int64_t getPlayerIdByAccessToken(const std::string &accessToken);
+        int64_t getPlayerIdByAccessToken(const std::string& accessToken);
 
-        bool tryRefresh(std::string &accessToken);
+        bool tryRefresh(std::string& accessToken);
 
-        void verifyEmail(const std::string &email);
+        void verifyEmail(const std::string& email);
 
-        std::string seedEmail(const std::string &email);
+        std::string seedEmail(const std::string& email);
 
-        std::tuple<std::string, bool> loginEmailCode(const std::string &email, const std::string &code);
+        std::tuple<std::string, bool> loginEmailCode(const std::string& email, const std::string& code);
 
-        std::string loginEmailPassword(const std::string &email, const std::string &password);
+        std::string loginEmailPassword(const std::string& email, const std::string& password);
 
         void resetEmail(
-                const std::string &email,
-                const std::string &code,
-                const std::string &newPassword
+            const std::string& email,
+            const std::string& code,
+            const std::string& newPassword
         );
 
         void migrateEmail(
-                int64_t playerId,
-                const std::string &newEmail,
-                const std::string &code
+            int64_t playerId,
+            const std::string& newEmail,
+            const std::string& code
         );
 
-        void deactivateEmail(int64_t playerId, const std::string &code);
+        void deactivateEmail(int64_t playerId, const std::string& code);
 
-        std::string getAvatar(const std::string &accessToken, int64_t playerId);
+        std::string getAvatar(const std::string& accessToken, int64_t playerId);
 
-        Json::Value getPlayerInfo(const std::string &accessToken, int64_t playerId);
+        Json::Value getPlayerInfo(const std::string& accessToken, int64_t playerId);
 
         void updatePlayerInfo(int64_t playerId, helpers::JsonHelper request);
 
-        bool ipLimit(const std::string &ip);
+        bool ipLimit(const std::string& ip);
 
-        bool loginLimit(const std::string &type, const std::string &key);
+        bool loginLimit(const std::string& type, const std::string& key);
 
-        bool verifyLimit(const std::string &type, const std::string &key);
+        bool verifyLimit(const std::string& type, const std::string& key);
 
     private:
         std::string _recaptchaSecret;
@@ -76,14 +76,14 @@ namespace studio26f::plugins {
                 _accessExpiration{}, _refreshExpiration{}, _emailExpiration{};
         uint64_t _ipMaxCount{}, _verifyMaxCount{}, _loginMaxCount{};
 
-        std::unordered_map<types::Products, std::pair<std::string, std::string>> _productAddressMap;
+        std::unordered_map<types::Products, std::tuple<std::string, std::string, std::string>> _productAddressMap;
 
         drogon::orm::Mapper<drogon_model::studio26f::Player> _playerMapper;
 
-        void _checkEmailCode(const std::string &email, const std::string &code);
+        void _checkEmailCode(const std::string& email, const std::string& code);
 
-        void _setEmailCode(const std::string &email, const std::string &code);
+        void _setEmailCode(const std::string& email, const std::string& code);
 
-        std::string _generateAccessToken(const std::string &playerId);
+        std::string _generateAccessToken(const std::string& playerId);
     };
 }
