@@ -108,37 +108,6 @@ string PlayerManager::oauth(
             k400BadRequest
         );
     } {
-        setClient("https://www.recaptcha.net");
-        const auto response = request(
-            Post,
-            "/recaptcha/api/siteverify",
-            {
-                {"secret", _recaptchaSecret},
-                {"response", recaptcha},
-                {"remoteip", address.toIp()},
-            },
-            {
-                {"success", JsonValue::Bool}
-            }
-        );
-        if (response["score"].isDouble() &&
-            response["score"].asDouble() < 0.7) {
-            throw ResponseException(
-                i18n("areYouARobot"),
-                internal::BaseException(to_string(response["score"].asDouble())),
-                ResultCode::NotAcceptable,
-                k406NotAcceptable
-            );
-        }
-        if (!response["success"].asBool()) {
-            throw ResponseException(
-                i18n("recaptchaFailed"),
-                internal::BaseException(response["error-codes"][0].asString()),
-                ResultCode::NotAcceptable,
-                k406NotAcceptable
-            );
-        }
-    } {
         const auto [host, path, secret] = _productAddressMap[productOptional.value()];
         setClient(host);
         Json::Value body;
