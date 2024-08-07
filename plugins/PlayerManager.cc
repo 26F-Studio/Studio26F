@@ -143,7 +143,6 @@ string PlayerManager::oauth(
 
 int64_t PlayerManager::getPlayerIdByAccessToken(const string& accessToken) {
     try {
-        LOG_DEBUG << "accessId: " << get(data::join({"auth", "access-id", accessToken}, ':'));
         return stoll(get(data::join({"auth", "access-id", accessToken}, ':')));
     } catch (const redis_exception::KeyNotFound& e) {
         throw ResponseException(
@@ -157,7 +156,6 @@ int64_t PlayerManager::getPlayerIdByAccessToken(const string& accessToken) {
 
 bool PlayerManager::tryRefresh(string& accessToken) {
     const auto ttl = chrono::milliseconds(pTtl(data::join({"auth", "access-id", accessToken}, ':')));
-    LOG_DEBUG << "ttl: " << ttl.count() << ", _refreshExpiration: " << _refreshExpiration.count();
     if (ttl.count() == -2) {
         throw ResponseException(
             i18n("invalidAccessToken"),
@@ -166,7 +164,6 @@ bool PlayerManager::tryRefresh(string& accessToken) {
         );
     }
     if (ttl < _refreshExpiration) {
-        LOG_DEBUG << "refreshing";
         const auto playerId = getPlayerIdByAccessToken(accessToken);
         NO_EXCEPTION(
             del(data::join({"auth", "access-id", accessToken}, ':'));
